@@ -7,14 +7,6 @@ export function singleTenantMiddleware(
   _res: Response,
   next: NextFunction
 ): void {
-  req.user = { id: config.singleTenant.userId };
+  req.user = { id: config.singleTenant.userId, email: 'tenant@local' };
   next();
-}
-declare global {
-  namespace Express {
-    interface Request {
-      user: { id: string };
-      timezone: string; 
-    }
-  }
 }
