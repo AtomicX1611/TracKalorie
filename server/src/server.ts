@@ -1,0 +1,41 @@
+import { createApp } from './app';
+import { connectDB, disconnectDB } from './common/config/database';
+import { validateConfig, config } from './common/config/config';
+
+async function main(): Promise<void> {
+  validateConfig();
+  await connectDB();
+  const app = createApp();
+  const server = app.listen(config.node.port, () => {
+    console.log(
+      `TracKalorie server running on http://localhost:${config.node.port} [${config.node.env}]`
+    );
+    console.log(`   Single-tenant userId: ${config.singleTenant.userId}`);
+  });
+
+  const shutdown = async (signal: string) => {
+    console.log(`\n${signal} received — shutting down gracefully...`);
+    server.close(async () => {
+      await disconnectDB();
+      console.log('Clean shutdown complete');
+      process.exit(0);
+    });
+
+    setTimeout(() => {
+      console.error('⚠️  Graceful shutdown timed out — forcing exit');
+      process.exit(1);
+    }, 10_000);
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled rejection:', reason);
+    shutdown('UNHANDLED_REJECTION');
+  });
+}
+
+main().catch((err) => {
+  console.error('Fatal startup error:', err);
+  process.exit(1);
+});

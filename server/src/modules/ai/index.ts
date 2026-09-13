@@ -1,0 +1,1 @@
+﻿// ai module — Phase scaffold placeholder

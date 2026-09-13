@@ -141,3 +141,34 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# ============================================================
+# PROJECT-SPECIFIC: TracKalorie — never commit these
+# ============================================================
+
+# Environment variables (all variants)
+.env
+.env.*
+!.env.example
+
+# Architecture spec & interview/assignment materials
+architecture-spec*.md
+architecture-spec (1).md
+*.pdf
+Typeface*.pdf
+
+# Architectural decisions log (internal notes, not for repo)
+DECISIONS.md
+decisions/
+_arch/
+_notes/
+_interview/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Editor artifacts
+*.swp
+*.swo
+.idea/

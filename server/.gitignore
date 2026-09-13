@@ -1,0 +1,19 @@
+# Server — TracKalorie Backend
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Uploads temp dir
+uploads/
