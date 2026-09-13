@@ -1,1 +1,0 @@
-﻿// chat module — Phase scaffold placeholder
