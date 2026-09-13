@@ -1,40 +1,31 @@
-// Merges Tailwind classes intelligently — avoids class conflicts
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
-export function cn(...inputs) {
-  return twMerge(clsx(inputs))
+export const cn = (...inputs) => twMerge(clsx(inputs))
+
+export const toDateStr = (d = new Date()) => d.toISOString().split('T')[0]
+
+export const formatDate = (str) => {
+  const d = new Date(str + 'T12:00:00')
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-// Format a number as compact (1200 → 1.2k)
-export function formatNumber(n) {
-  if (n >= 1000) return (n / 1000).toFixed(1) + 'k'
-  return Math.round(n).toString()
+export const formatDateLong = (str) => {
+  const d = new Date(str + 'T12:00:00')
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
-// Format a date to YYYY-MM-DD
-export function toDateString(date = new Date()) {
-  return date.toISOString().split('T')[0]
-}
+export const pct = (val, target) =>
+  target > 0 ? Math.min(Math.round((val / target) * 100), 100) : 0
 
-// Convert YYYY-MM-DD to display format (Sep 13)
-export function formatDateShort(dateStr) {
-  const date = new Date(dateStr + 'T12:00:00')
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
+export const getBrowserTimezone = () =>
+  Intl.DateTimeFormat().resolvedOptions().timeZone
 
-// Get today's IANA timezone
-export function getBrowserTimezone() {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone
-}
+export const fmt = (n, decimals = 0) =>
+  (Math.round(n * 10 ** decimals) / 10 ** decimals).toFixed(decimals)
 
-// Macro calorie calculation (protein×4 + carb×4 + fat×9)
-export function calcCaloriesFromMacros(proteinG, carbG, fatG) {
-  return proteinG * 4 + carbG * 4 + fatG * 9
-}
-
-// Get progress percentage capped at 100
-export function pct(value, target) {
-  if (!target || target === 0) return 0
-  return Math.min((value / target) * 100, 100)
+export const MACRO_COLORS = {
+  protein: '#7CFFB2',
+  carb:    '#60A5FA',
+  fat:     '#F59E0B',
 }

@@ -14,14 +14,20 @@ export default {
         'accent-dim': '#4DEBA0',
         warning: '#F59E0B',
         destructive: '#EF4444',
-        'destructive-dim': '#DC2626',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'IBM Plex Mono', 'monospace'],
+        mono: ['"JetBrains Mono"', '"IBM Plex Mono"', 'monospace'],
       },
-      borderColor: {
-        DEFAULT: '#26262A',
+      animation: {
+        'fade-in': 'fadeIn 0.2s ease-out',
+        'spin-slow': 'spin 1.2s linear infinite',
+      },
+      keyframes: {
+        fadeIn: {
+          from: { opacity: 0, transform: 'translateY(6px)' },
+          to: { opacity: 1, transform: 'translateY(0)' },
+        },
       },
     },
   },
