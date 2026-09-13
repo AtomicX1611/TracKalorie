@@ -6,8 +6,8 @@ async function main() {
     await connectDB();
     const app = createApp();
     const server = app.listen(config.node.port, () => {
-        console.log(`TracKalorie server running on http://localhost:${config.node.port} [${config.node.env}]`);
-        console.log(`   Single-tenant userId: ${config.singleTenant.userId}`);
+        console.log(`✓ TracKalorie server running on http://localhost:${config.node.port} [${config.node.env}]`);
+        console.log(`✓ Auth: JWT (access=${config.jwt.expiresIn}, refresh=7d)`);
     });
     const shutdown = async (signal) => {
         console.log(`\n${signal} received — shutting down gracefully...`);
@@ -17,7 +17,7 @@ async function main() {
             process.exit(0);
         });
         setTimeout(() => {
-            console.error('⚠️  Graceful shutdown timed out — forcing exit');
+            console.error(' Graceful shutdown timed out — forcing exit');
             process.exit(1);
         }, 10_000);
     };
