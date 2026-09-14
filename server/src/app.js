@@ -18,7 +18,12 @@ export function createApp() {
     const app = express();
     app.use(helmet());
     app.use(cors({
-        origin: config.cors.clientOrigin,
+        origin: (requestOrigin, callback) => {
+            if (!requestOrigin || config.cors.clientOrigins.includes(requestOrigin)) {
+                return callback(null, true);
+            }
+            return callback(null, false);
+        },
         credentials: true,
         methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: [

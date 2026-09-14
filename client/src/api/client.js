@@ -2,8 +2,18 @@ import axios from 'axios'
 import { getBrowserTimezone } from '../lib/utils'
 
 // ── Axios instance ────────────────────────────────────────────────────────────
+const apiBaseUrl = import.meta.env.VITE_API_URL
+
+if (!apiBaseUrl) {
+  throw new Error('VITE_API_URL must be configured before starting the client')
+}
+
+const normalizedApiBaseUrl = apiBaseUrl.replace(/\/$/, '').endsWith('/api/v1')
+  ? apiBaseUrl.replace(/\/$/, '')
+  : `${apiBaseUrl.replace(/\/$/, '')}/api/v1`
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api/v1',
+  baseURL: normalizedApiBaseUrl,
   headers: { 'Content-Type': 'application/json' },
 })
 

@@ -20,7 +20,10 @@ export const config = {
         apiKey: process.env.OPENAI_API_KEY ?? '',
     },
     cors: {
-        clientOrigin: process.env.CLIENT_ORIGIN ?? 'http://localhost:5173',
+        clientOrigins: (process.env.CLIENT_ORIGIN ?? 'http://localhost:5173')
+            .split(',')
+            .map((origin) => origin.trim())
+            .filter(Boolean),
     },
     jwt: {
         secret: process.env.JWT_SECRET ?? 'change_me_before_production',
@@ -36,6 +39,6 @@ export function validateConfig() {
         throw new Error('OPENAI_API_KEY is required in production');
     if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'change_me_before_production')
         throw new Error('JWT_SECRET must be set to a strong unique value in production');
-    if (!config.cors.clientOrigin || config.cors.clientOrigin.includes('localhost'))
+    if (config.cors.clientOrigins.length === 0 || config.cors.clientOrigins.some((origin) => origin.includes('localhost')))
         throw new Error('CLIENT_ORIGIN must be set to the hosted client URL in production');
 }
