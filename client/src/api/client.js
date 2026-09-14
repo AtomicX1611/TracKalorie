@@ -40,13 +40,12 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config
+    const requestUrl = original?.url ?? ''
+    const isAuthRequest = /\/auth\/(login|register|refresh|logout)/.test(requestUrl)
+    const canRefresh = error.response?.status === 401 && !isAuthRequest && !original?._retry
 
-    // 401 with TOKEN_EXPIRED → try refresh
-    if (
-      error.response?.status === 401 &&
-      error.response?.data?.error?.code === 'TOKEN_EXPIRED' &&
-      !original._retry
-    ) {
+    // Recover from expired or otherwise stale access tokens on protected requests.
+    if (canRefresh) {
       if (isRefreshing) {
         // Queue requests that arrive while refresh is in progress
         return new Promise((resolve, reject) => {
