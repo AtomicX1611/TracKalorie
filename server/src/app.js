@@ -14,6 +14,7 @@ import { goalsRouter } from './modules/goals/goals.routes.js';
 import { mealsRouter } from './modules/meals/meals.routes.js';
 import { nutritionRouter } from './modules/nutrition/nutrition.routes.js';
 import { aiRouter } from './modules/ai/ai.routes.js';
+import { chatRouter } from './modules/chat/index.js';
 export function createApp() {
     const app = express();
     app.use(helmet());
@@ -62,6 +63,7 @@ export function createApp() {
     app.use('/api/v1/meals', mealsRouter);
     app.use('/api/v1/nutrition', nutritionRouter);
     app.use('/api/v1/ai', aiRouter);
+    app.use('/api/v1/chat', chatRouter);
     // ─── 404 handler ──────────────────────────────────────────────────────────
     app.use((_req, res) => {
         res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });

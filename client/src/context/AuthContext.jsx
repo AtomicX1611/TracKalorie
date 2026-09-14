@@ -56,6 +56,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('accessToken')
       localStorage.removeItem('refreshToken')
       localStorage.removeItem('tk_user')
+      localStorage.removeItem('trackalorie_chat_v1') // clear AI chat history on logout
       setUser(null)
     }
   }, [])

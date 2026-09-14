@@ -44,6 +44,19 @@ export default function DashboardPage() {
     })
   }, [refreshKey])
 
+  // ── Live sync: re-fetch when the AI chat performs a write action ──────────
+  useEffect(() => {
+    const DASHBOARD_TRIGGERS = ['log_meal', 'delete_meal', 'set_goal']
+    const handler = (e) => {
+      const actions = e.detail?.actions ?? []
+      if (actions.some((a) => DASHBOARD_TRIGGERS.includes(a))) {
+        setRefreshKey((k) => k + 1)
+      }
+    }
+    window.addEventListener('trackalorie:data-changed', handler)
+    return () => window.removeEventListener('trackalorie:data-changed', handler)
+  }, [])
+
   const todayTotals = meals.reduce(
     (acc, m) => ({
       calories: acc.calories + m.totals.calories,

@@ -1,1 +1,1 @@
-// chat module — Phase scaffold placeholder
+export { chatRouter } from './chat.routes.js';

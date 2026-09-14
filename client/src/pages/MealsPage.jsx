@@ -17,6 +17,7 @@ export default function MealsPage() {
   const [nextCursor, setNextCursor] = useState(null)
   const [editingMeal, setEditingMeal] = useState(null)
   const [error, setError] = useState(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     const today = new Date()
@@ -39,7 +40,20 @@ export default function MealsPage() {
         setNextCursor(null)
         setError(err?.response?.data?.error?.message ?? 'Unable to load meals.')
       })
-  }, [dateFilter, typeFilter])
+  }, [dateFilter, typeFilter, refreshKey])
+
+  // ── Live sync: re-fetch when the AI chat logs or deletes a meal ───────────
+  useEffect(() => {
+    const MEALS_TRIGGERS = ['log_meal', 'delete_meal']
+    const handler = (e) => {
+      const actions = e.detail?.actions ?? []
+      if (actions.some((a) => MEALS_TRIGGERS.includes(a))) {
+        setRefreshKey((k) => k + 1)
+      }
+    }
+    window.addEventListener('trackalorie:data-changed', handler)
+    return () => window.removeEventListener('trackalorie:data-changed', handler)
+  }, [])
 
   const filtered = useMemo(() => {
     return meals.filter((m) => {

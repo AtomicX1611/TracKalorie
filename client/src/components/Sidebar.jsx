@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import {
   LayoutDashboard, UtensilsCrossed, Target, BarChart3,
-  ScanLine, LogOut, Zap
+  ScanLine, LogOut, Zap, MessageSquare
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 
@@ -54,6 +54,20 @@ export default function Sidebar() {
             {label}
           </NavLink>
         ))}
+
+        {/* AI Chat button */}
+        <button
+          id="sidebar-chat-btn"
+          onClick={() => document.getElementById('chat-fab')?.click()}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all text-muted-foreground hover:text-foreground hover:bg-surface-elevated w-full text-left mt-1 border-t border-border pt-3"
+        >
+          <div className="relative">
+            <MessageSquare className="w-4 h-4 shrink-0" />
+            <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
+          </div>
+          <span>AI Chat</span>
+          <span className="ml-auto text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full font-medium">New</span>
+        </button>
       </nav>
 
       {/* User footer */}

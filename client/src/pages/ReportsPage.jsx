@@ -46,6 +46,7 @@ export default function ReportsPage() {
   const [includeMissingDays, setIncludeMissingDays] = useState(true)
   const [reportRange, setReportRange] = useState({ from: '', to: '' })
   const [error, setError] = useState(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     const today = new Date()
@@ -75,6 +76,19 @@ export default function ReportsPage() {
       setMicros([])
       setError(err?.response?.data?.error?.message ?? 'Unable to load reports.')
     })
+  }, [refreshKey])
+
+  // ── Live sync: re-fetch when the AI chat writes meal or goal data ────────
+  useEffect(() => {
+    const REPORTS_TRIGGERS = ['log_meal', 'delete_meal', 'set_goal']
+    const handler = (e) => {
+      const actions = e.detail?.actions ?? []
+      if (actions.some((a) => REPORTS_TRIGGERS.includes(a))) {
+        setRefreshKey((k) => k + 1)
+      }
+    }
+    window.addEventListener('trackalorie:data-changed', handler)
+    return () => window.removeEventListener('trackalorie:data-changed', handler)
   }, [])
 
   const rangeDays = []

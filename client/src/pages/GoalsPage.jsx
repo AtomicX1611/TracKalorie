@@ -89,6 +89,7 @@ export default function GoalsPage() {
   const [history, setHistory] = useState([])
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     setError(null)
@@ -101,6 +102,21 @@ export default function GoalsPage() {
         setHistory([])
         setError(err?.response?.data?.error?.message ?? 'Unable to load goals.')
       })
+  }, [refreshKey])
+
+  // ── Live sync: re-fetch when the AI chat sets a new goal ───────────────
+  useEffect(() => {
+    const handler = (e) => {
+      const actions = e.detail?.actions ?? []
+      if (actions.includes('set_goal')) {
+        setRefreshKey((k) => k + 1)
+        // Also show the saved banner briefly so user knows it's reflected
+        setSaved(true)
+        setTimeout(() => setSaved(false), 3000)
+      }
+    }
+    window.addEventListener('trackalorie:data-changed', handler)
+    return () => window.removeEventListener('trackalorie:data-changed', handler)
   }, [])
 
   const handleSave = async (data) => {
