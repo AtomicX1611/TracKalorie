@@ -75,6 +75,8 @@ export const mealsService = {
         const updateData = {};
         if (data.mealType)
             updateData['mealType'] = data.mealType;
+        if (data.date)
+            updateData['date'] = parseDateInTimezone(data.date, data.timezone);
         if (data.items) {
             updateData['items'] = data.items;
             updateData['totals'] = computeTotals(data.items);

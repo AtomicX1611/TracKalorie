@@ -18,6 +18,7 @@ function getOpenAI() {
 const LabelResponseSchema = z.object({
     foodName: z.string().min(1),
     servingSize: z.string(),
+    servingGrams: z.number().positive().nullable(),
     servingsPerContainer: z.number().nullable(),
     calories: z.number().min(0),
     proteinG: z.number().min(0),
@@ -89,6 +90,8 @@ export const aiService = {
                         ],
                     },
                 ],
+                temperature: 0,
+                seed: 42,
                 response_format: {
                     type: 'json_schema',
                     json_schema: schema,

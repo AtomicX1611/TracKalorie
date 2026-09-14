@@ -14,6 +14,9 @@ export default function MealsPage() {
   const [typeFilter, setTypeFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('')
   const [search, setSearch] = useState('')
+  const [nextCursor, setNextCursor] = useState(null)
+  const [editingMeal, setEditingMeal] = useState(null)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     const today = new Date()
@@ -22,13 +25,21 @@ export default function MealsPage() {
     const toDate = new Date(today)
     toDate.setDate(today.getDate() + 30)
     const params = dateFilter
-      ? { from: dateFilter, to: dateFilter, limit: 100 }
-      : { from: toDateStr(fromDate), to: toDateStr(toDate), limit: 100 }
+      ? { from: dateFilter, to: dateFilter, mealType: typeFilter === 'all' ? undefined : typeFilter, limit: 100 }
+      : { from: toDateStr(fromDate), to: toDateStr(toDate), mealType: typeFilter === 'all' ? undefined : typeFilter, limit: 100 }
 
+    setError(null)
     mealsApi.list(params)
-      .then((result) => setMeals(result.data ?? []))
-      .catch(() => setMeals([]))
-  }, [dateFilter])
+      .then((result) => {
+        setMeals(result.data ?? [])
+        setNextCursor(result.pagination?.nextCursor ?? null)
+      })
+      .catch((err) => {
+        setMeals([])
+        setNextCursor(null)
+        setError(err?.response?.data?.error?.message ?? 'Unable to load meals.')
+      })
+  }, [dateFilter, typeFilter])
 
   const filtered = useMemo(() => {
     return meals.filter((m) => {
@@ -57,9 +68,41 @@ export default function MealsPage() {
     setMeals((p) => [createdMeal, ...p])
   }
 
+  const handleUpdate = async (id, data) => {
+    const updatedMeal = await mealsApi.update(id, data)
+    setMeals((p) => p.map((item) => item._id === id ? updatedMeal : item))
+    setEditingMeal(null)
+  }
+
   const handleDelete = async (id) => {
-    await mealsApi.remove(id)
-    setMeals((p) => p.filter((m) => m._id !== id))
+    try {
+      await mealsApi.remove(id)
+      setMeals((p) => p.filter((m) => m._id !== id))
+    } catch (err) {
+      setError(err?.response?.data?.error?.message ?? 'Unable to delete this meal.')
+    }
+  }
+
+  const loadMore = async () => {
+    if (!nextCursor) return
+    try {
+      const today = new Date()
+      const fromDate = new Date(today)
+      fromDate.setDate(today.getDate() - 30)
+      const toDate = new Date(today)
+      toDate.setDate(today.getDate() + 30)
+      const result = await mealsApi.list({
+        from: dateFilter || toDateStr(fromDate),
+        to: dateFilter || toDateStr(toDate),
+        mealType: typeFilter === 'all' ? undefined : typeFilter,
+        cursor: nextCursor,
+        limit: 100,
+      })
+      setMeals((p) => [...p, ...(result.data ?? [])])
+      setNextCursor(result.pagination?.nextCursor ?? null)
+    } catch (err) {
+      setError(err?.response?.data?.error?.message ?? 'Unable to load more meals.')
+    }
   }
 
   const todayTotal = meals
@@ -77,6 +120,8 @@ export default function MealsPage() {
           </Button>
         }
       />
+
+      {error && <p className="mb-5 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">{error}</p>}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -144,7 +189,7 @@ export default function MealsPage() {
                 </div>
                 <div className="flex flex-col gap-2">
                   {dayMeals.map((m) => (
-                    <MealCard key={m._id} meal={m} onDelete={handleDelete} />
+                    <MealCard key={m._id} meal={m} onDelete={handleDelete} onEdit={setEditingMeal} />
                   ))}
                 </div>
               </div>
@@ -153,7 +198,10 @@ export default function MealsPage() {
         </div>
       )}
 
+      {nextCursor && <Button variant="secondary" className="mt-6 w-full" onClick={loadMore}>Load more meals</Button>}
+
       <AddMealModal open={showAdd} onClose={() => setShowAdd(false)} onAdd={handleAdd} />
+      <AddMealModal open={Boolean(editingMeal)} meal={editingMeal} onClose={() => setEditingMeal(null)} onUpdate={handleUpdate} />
     </div>
   )
 }

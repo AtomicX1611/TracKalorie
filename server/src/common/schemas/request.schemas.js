@@ -74,6 +74,7 @@ export const UpdateMealSchema = z.object({
     params: z.object({ id: z.string().min(1) }),
     body: z.object({
         mealType: z.enum(['breakfast', 'lunch', 'dinner', 'snack']).optional(),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD').optional(),
         items: z.array(FoodItemSchema).min(1).optional(),
     }),
 });

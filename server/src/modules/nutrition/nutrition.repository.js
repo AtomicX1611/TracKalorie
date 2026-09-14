@@ -101,7 +101,7 @@ export const nutritionRepository = {
         ]);
         return results;
     },
-    async getMicroSummary(userId, from, to) {
+    async getMicroSummary(userId, from, to, timezone) {
         const results = await MealModel.aggregate([
             {
                 $match: {
@@ -112,7 +112,9 @@ export const nutritionRepository = {
             { $unwind: '$items' },
             {
                 $group: {
-                    _id: null,
+                    _id: {
+                        $dateTrunc: { date: '$date', unit: 'day', timezone: 'UTC' },
+                    },
                     vitaminA_mcg: { $sum: { $ifNull: ['$items.micros.vitaminA_mcg', 0] } },
                     vitaminC_mg: { $sum: { $ifNull: ['$items.micros.vitaminC_mg', 0] } },
                     calcium_mg: { $sum: { $ifNull: ['$items.micros.calcium_mg', 0] } },
@@ -122,12 +124,28 @@ export const nutritionRepository = {
                     sugar_g: { $sum: { $ifNull: ['$items.micros.sugar_g', 0] } },
                 },
             },
-            { $project: { _id: 0 } },
+            { $sort: { _id: 1 } },
+            {
+                $project: {
+                    _id: 0,
+                    day: {
+                        $dateToString: {
+                            format: '%Y-%m-%d',
+                            date: '$_id',
+                            timezone: 'UTC',
+                        },
+                    },
+                    vitaminA_mcg: 1,
+                    vitaminC_mg: 1,
+                    calcium_mg: 1,
+                    iron_mg: 1,
+                    sodium_mg: 1,
+                    fiber_g: 1,
+                    sugar_g: 1,
+                },
+            },
         ]);
-        return results[0] ?? {
-            vitaminA_mcg: 0, vitaminC_mg: 0, calcium_mg: 0,
-            iron_mg: 0, sodium_mg: 0, fiber_g: 0, sugar_g: 0,
-        };
+        return results;
     },
     async getGoalVsActual(userId, from, to, timezone) {
         // Step 1: aggregate actuals per selected calendar day

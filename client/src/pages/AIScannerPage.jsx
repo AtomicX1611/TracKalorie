@@ -1,48 +1,8 @@
 import { useState, useRef } from 'react'
 import { ScanLine, Upload, CheckCircle2, AlertTriangle, X, Camera } from 'lucide-react'
-import { Button, Card, SectionHeader } from '../components/ui'
-import { fmt } from '../lib/utils'
-
-// Simulated AI extraction result for UI demo
-const DUMMY_LABEL_RESULT = {
-  type: 'label',
-  confidence: 'high',
-  confidenceScore: 0.91,
-  warnings: [],
-  draft: {
-    foodName: 'Kellogg\'s Special K Original',
-    servingSize: '1 cup (31g)',
-    servingsPerContainer: 14,
-    calories: 120,
-    proteinG: 6,
-    carbG: 22,
-    fatG: 0.5,
-    micros: {
-      vitaminA_mcg: 200,
-      vitaminC_mg: 6,
-      calcium_mg: 10,
-      iron_mg: 11,
-      sodium_mg: 200,
-      fiber_g: 1,
-      sugar_g: 4,
-    },
-  },
-}
-
-const DUMMY_PLATE_RESULT = {
-  type: 'plate',
-  confidence: 'medium',
-  confidenceScore: 0.65,
-  warnings: [
-    'Plate estimations are visual approximations. Portion sizes may vary — please review and adjust.',
-    'Hidden sauces or marinades may add calories not visible in the image.',
-  ],
-  draft: [
-    { name: 'Grilled Salmon',    estimatedQuantity: '200g', calories: 416, proteinG: 46, carbG: 0,  fatG: 24 },
-    { name: 'Steamed Broccoli',  estimatedQuantity: '150g', calories: 51,  proteinG: 4,  carbG: 10, fatG: 0.5 },
-    { name: 'Mashed Potatoes',   estimatedQuantity: '180g', calories: 212, proteinG: 4,  carbG: 42, fatG: 4 },
-  ],
-}
+import { Button, Card, SectionHeader, Select, Input } from '../components/ui'
+import { fmt, toDateStr } from '../lib/utils'
+import { aiApi, mealsApi } from '../api'
 
 const CONFIDENCE_CONFIG = {
   high:   { color: 'bg-accent/10 border-accent/30 text-accent',            icon: CheckCircle2, label: 'High confidence' },
@@ -52,18 +12,28 @@ const CONFIDENCE_CONFIG = {
 
 export default function AIScannerPage() {
   const [mode, setMode] = useState('label') // 'label' | 'plate'
+  const [selectedFile, setSelectedFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [scanning, setScanning] = useState(false)
   const [result, setResult] = useState(null)
   const [confirmed, setConfirmed] = useState(false)
+  const [error, setError] = useState(null)
+  const [mealType, setMealType] = useState('snack')
+  const [mealDate, setMealDate] = useState(toDateStr())
+  const [labelServingGrams, setLabelServingGrams] = useState('')
+  const [consumedGrams, setConsumedGrams] = useState('')
   const fileRef = useRef()
 
   const handleFile = (file) => {
     if (!file) return
     const url = URL.createObjectURL(file)
+    setSelectedFile(file)
     setImagePreview(url)
     setResult(null)
+    setLabelServingGrams('')
+    setConsumedGrams('')
     setConfirmed(false)
+    setError(null)
   }
 
   const handleDrop = (e) => {
@@ -72,23 +42,102 @@ export default function AIScannerPage() {
   }
 
   const handleScan = async () => {
-    if (!imagePreview) return
+    if (!selectedFile) return
     setScanning(true)
     setResult(null)
-    // Simulate API delay
-    await new Promise((r) => setTimeout(r, 2200))
-    setResult(mode === 'label' ? DUMMY_LABEL_RESULT : DUMMY_PLATE_RESULT)
-    setScanning(false)
+    setError(null)
+    try {
+      const extraction = await aiApi.extract(selectedFile, mode)
+      setResult(extraction)
+      setConsumedGrams(extraction.type === 'label' && extraction.draft.servingGrams
+        ? String(extraction.draft.servingGrams)
+        : '')
+      setLabelServingGrams(extraction.type === 'label' && extraction.draft.servingGrams
+        ? String(extraction.draft.servingGrams)
+        : '')
+    } catch (err) {
+      setError(
+        err?.response?.data?.error?.message
+        ?? (!err?.response
+          ? 'The backend is unavailable. Start the server on port 5000 and make sure MongoDB is running.'
+          : 'Unable to analyze this image. Please try again.')
+      )
+    } finally {
+      setScanning(false)
+    }
   }
 
-  const handleConfirm = () => {
-    // TODO: call mealsApi.create() with result data
-    setConfirmed(true)
-    setTimeout(() => {
-      setImagePreview(null)
-      setResult(null)
-      setConfirmed(false)
-    }, 2000)
+  const toQuantity = (value) => {
+    const match = String(value ?? '').trim().match(/^([\d.]+)\s*(.*)$/)
+    return { amount: match ? Number(match[1]) : 1, unit: match?.[2] || 'serving' }
+  }
+
+  const getLabelNutrition = () => {
+    const draft = result.draft
+    const servingGrams = Number(labelServingGrams)
+    const amountGrams = Number(consumedGrams)
+    const scale = servingGrams > 0 && amountGrams > 0 ? amountGrams / servingGrams : 1
+    const scaleValue = (value) => value === null ? null : Math.round(value * scale * 10) / 10
+
+    return {
+      ...draft,
+      calories: Math.round(draft.calories * scale),
+      proteinG: scaleValue(draft.proteinG),
+      carbG: scaleValue(draft.carbG),
+      fatG: scaleValue(draft.fatG),
+      micros: Object.fromEntries(
+        Object.entries(draft.micros ?? {}).map(([key, value]) => [key, scaleValue(value)])
+      ),
+    }
+  }
+
+  const handleConfirm = async () => {
+    if (!result) return
+    setError(null)
+    try {
+      const labelNutrition = result.type === 'label' ? getLabelNutrition() : null
+      const items = result.type === 'label'
+        ? [{
+            name: labelNutrition.foodName,
+            calories: labelNutrition.calories,
+            quantity: { amount: Number(consumedGrams), unit: 'g' },
+            macros: {
+              proteinG: labelNutrition.proteinG,
+              carbG: labelNutrition.carbG,
+              fatG: labelNutrition.fatG,
+            },
+            micros: Object.fromEntries(
+              Object.entries(labelNutrition.micros ?? {}).filter(([, value]) => value !== null)
+            ),
+          }]
+        : result.draft.map((item) => ({
+            name: item.name,
+            calories: item.calories,
+            quantity: toQuantity(item.estimatedQuantity),
+            macros: {
+              proteinG: item.proteinG,
+              carbG: item.carbG,
+              fatG: item.fatG,
+            },
+          }))
+
+      await mealsApi.create({
+        mealType,
+        date: mealDate,
+        source: result.type === 'label' ? 'ai_label' : 'ai_plate',
+        aiMeta: { confidence: result.confidenceScore },
+        items,
+      })
+      setConfirmed(true)
+      setTimeout(() => {
+        setSelectedFile(null)
+        setImagePreview(null)
+        setResult(null)
+        setConfirmed(false)
+      }, 2000)
+    } catch (err) {
+      setError(err?.response?.data?.error?.message ?? 'Unable to save this meal. Please try again.')
+    }
   }
 
   const cc = result ? CONFIDENCE_CONFIG[result.confidence] : null
@@ -96,7 +145,10 @@ export default function AIScannerPage() {
 
   const totalCalories = result?.type === 'plate'
     ? result.draft.reduce((a, it) => a + it.calories, 0)
-    : result?.draft?.calories
+    : result?.type === 'label' ? getLabelNutrition().calories : undefined
+  const labelNutrition = result?.type === 'label' ? getLabelNutrition() : null
+  const canConfirmLabel = result?.type !== 'label'
+    || (Number(labelServingGrams) > 0 && Number(consumedGrams) > 0)
 
   return (
     <div className="p-6 max-w-4xl mx-auto animate-fade-in">
@@ -142,7 +194,7 @@ export default function AIScannerPage() {
               <>
                 <img src={imagePreview} alt="Preview" className="w-full h-56 object-cover rounded-xl" />
                 <button
-                  onClick={(e) => { e.stopPropagation(); setImagePreview(null); setResult(null) }}
+                  onClick={(e) => { e.stopPropagation(); setSelectedFile(null); setImagePreview(null); setResult(null); setError(null) }}
                   className="absolute top-3 right-3 w-7 h-7 rounded-full bg-background/80 flex items-center justify-center text-muted-foreground hover:text-foreground"
                 >
                   <X className="w-4 h-4" />
@@ -174,6 +226,17 @@ export default function AIScannerPage() {
             <ScanLine className="w-4 h-4" />
             {scanning ? 'Analyzing with GPT-4o…' : 'Scan & Extract'}
           </Button>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Select label="Meal type" value={mealType} onChange={(e) => setMealType(e.target.value)}>
+              {['breakfast', 'lunch', 'dinner', 'snack'].map((type) => (
+                <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
+              ))}
+            </Select>
+            <Input label="Date" type="date" value={mealDate} onChange={(e) => setMealDate(e.target.value)} />
+          </div>
+
+          {error && <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">{error}</p>}
 
           {mode === 'plate' && (
             <p className="text-xs text-muted-foreground text-center px-2">
@@ -235,14 +298,35 @@ export default function AIScannerPage() {
                   <div className="flex flex-col gap-3">
                     <div>
                       <p className="text-sm font-semibold text-foreground">{result.draft.foodName}</p>
-                      <p className="text-xs text-muted-foreground">{result.draft.servingSize}</p>
+                      <p className="text-xs text-muted-foreground">Label serving: {result.draft.servingSize}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        label="Label serving (g)"
+                        type="number"
+                        min="1"
+                        step="0.1"
+                        value={labelServingGrams}
+                        onChange={(e) => setLabelServingGrams(e.target.value)}
+                      />
+                      <Input
+                        label="Consumed (g)"
+                        type="number"
+                        min="1"
+                        step="0.1"
+                        value={consumedGrams}
+                        onChange={(e) => setConsumedGrams(e.target.value)}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Showing estimated nutrition for {consumedGrams || 0}g consumed, based on the label values per {labelServingGrams || 0}g.
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
                       {[
-                        { label: 'Calories', val: result.draft.calories, unit: 'kcal', color: '#7CFFB2' },
-                        { label: 'Protein',  val: result.draft.proteinG, unit: 'g',    color: '#7CFFB2' },
-                        { label: 'Carbs',    val: result.draft.carbG,    unit: 'g',    color: '#60A5FA' },
-                        { label: 'Fat',      val: result.draft.fatG,     unit: 'g',    color: '#F59E0B' },
+                        { label: 'Calories', val: labelNutrition.calories, unit: 'kcal', color: '#7CFFB2' },
+                        { label: 'Protein',  val: labelNutrition.proteinG, unit: 'g',    color: '#7CFFB2' },
+                        { label: 'Carbs',    val: labelNutrition.carbG,    unit: 'g',    color: '#60A5FA' },
+                        { label: 'Fat',      val: labelNutrition.fatG,     unit: 'g',    color: '#F59E0B' },
                       ].map(({ label, val, unit, color }) => (
                         <div key={label} className="card p-2.5 text-center">
                           <p className="mono text-lg font-bold" style={{ color }}>{fmt(val)}{unit}</p>
@@ -281,7 +365,7 @@ export default function AIScannerPage() {
 
               <div className="flex gap-3">
                 <Button variant="secondary" className="flex-1" onClick={() => setResult(null)}>Re-scan</Button>
-                <Button className="flex-1" onClick={handleConfirm}>
+                <Button className="flex-1" onClick={handleConfirm} disabled={!canConfirmLabel}>
                   <CheckCircle2 className="w-4 h-4" /> Confirm & Log
                 </Button>
               </div>

@@ -41,8 +41,11 @@ export default function ReportsPage() {
   const [weeklyTrend, setWeeklyTrend] = useState([])
   const [goalVsActual, setGoalVsActual] = useState([])
   const [macros, setMacros] = useState([])
-  const [micros, setMicros] = useState({})
+  const [micros, setMicros] = useState([])
   const [goal, setGoal] = useState({ dailyCalorieTarget: 0, proteinTargetG: 0, carbTargetG: 0, fatTargetG: 0 })
+  const [includeMissingDays, setIncludeMissingDays] = useState(true)
+  const [reportRange, setReportRange] = useState({ from: '', to: '' })
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     const today = new Date()
@@ -50,6 +53,8 @@ export default function ReportsPage() {
     fromDate.setDate(today.getDate() - 6)
     const from = toDateStr(fromDate)
     const to = toDateStr(today)
+    setReportRange({ from, to })
+    setError(null)
 
     Promise.all([
       nutritionApi.weeklyTrend({ from, to }),
@@ -61,24 +66,47 @@ export default function ReportsPage() {
       setWeeklyTrend(trend ?? [])
       setMacros(macroData ?? [])
       setGoalVsActual(goalData ?? [])
-      setMicros(microData ?? {})
+      setMicros(microData ?? [])
       setGoal(currentGoal ?? { dailyCalorieTarget: 0, proteinTargetG: 0, carbTargetG: 0, fatTargetG: 0 })
-    }).catch(() => {
+    }).catch((err) => {
       setWeeklyTrend([])
       setMacros([])
       setGoalVsActual([])
-      setMicros({})
+      setMicros([])
+      setError(err?.response?.data?.error?.message ?? 'Unable to load reports.')
     })
   }, [])
 
-  const trendData = weeklyTrend.map((d) => ({ ...d, day: formatDate(d.day) }))
+  const rangeDays = []
+  if (reportRange.from && reportRange.to) {
+    const cursor = new Date(`${reportRange.from}T12:00:00`)
+    const end = new Date(`${reportRange.to}T12:00:00`)
+    while (cursor <= end) {
+      rangeDays.push(toDateStr(cursor))
+      cursor.setDate(cursor.getDate() + 1)
+    }
+  }
+
+  const fillDailyData = (data, dateKey = 'day') => {
+    const byDay = new Map(data.map((item) => [item[dateKey], item]))
+    if (!includeMissingDays) return data
+    return rangeDays.map((day) => byDay.get(day) ?? {
+      [dateKey]: day,
+      calories: 0,
+      proteinG: 0,
+      carbG: 0,
+      fatG: 0,
+    })
+  }
+
+  const trendData = fillDailyData(weeklyTrend).map((d) => ({ ...d, day: formatDate(d.day) }))
   const gvaData = goalVsActual.filter((d) => d.goal).map((d) => ({
     day: formatDate(d.day),
     actual: d.actual.calories,
     goal: d.goal.dailyCalorieTarget,
   }))
 
-  const macroChartData = macros.map((d) => ({
+  const macroChartData = fillDailyData(macros, 'period').map((d) => ({
     day: formatDate(d.period),
     Protein: Math.round(d.proteinG * 4),
     Carbs:   Math.round(d.carbG * 4),
@@ -91,12 +119,15 @@ export default function ReportsPage() {
     { name: 'Fat',     value: Math.round(goal.fatTargetG * 9),    color: MACRO_COLORS.fat },
   ]
 
-  const microsData = Object.entries(micros).map(([key, val]) => ({
-    name: MICRO_LABELS[key],
-    value: val,
+  const microDays = includeMissingDays
+    ? rangeDays.map((day) => micros.find((item) => item.day === day) ?? { day })
+    : micros
+  const microsData = microDays.flatMap((day) => Object.entries(MICRO_LABELS).map(([key, label]) => ({
+    name: `${label} · ${formatDate(day.day)}`,
+    value: day[key] ?? 0,
     target: MICROS_DAILY_TARGETS[key],
-    pct: Math.round((val / MICROS_DAILY_TARGETS[key]) * 100),
-  }))
+    pct: Math.round(((day[key] ?? 0) / MICROS_DAILY_TARGETS[key]) * 100),
+  })))
 
   const TABS = [
     { id: 'trend',  label: 'Calorie Trend' },
@@ -109,9 +140,16 @@ export default function ReportsPage() {
     <div className="p-6 max-w-5xl mx-auto animate-fade-in">
       <SectionHeader
         title="Nutrition Reports"
-        subtitle="7-day window · Sep 7 – Sep 13"
+        subtitle={reportRange.from ? `7-day window · ${formatDate(reportRange.from)} – ${formatDate(reportRange.to)}` : 'Loading report range…'}
         action={<BarChart3 className="w-5 h-5 text-accent" />}
       />
+
+      {error && <p className="mb-5 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">{error}</p>}
+
+      <label className="flex items-center gap-2 mb-6 text-xs text-muted-foreground cursor-pointer">
+        <input type="checkbox" checked={includeMissingDays} onChange={(e) => setIncludeMissingDays(e.target.checked)} />
+        Show days without meals as zero totals
+      </label>
 
       {/* Tab bar */}
       <div className="flex gap-1 mb-6 bg-surface p-1 rounded-lg w-fit border border-border">
@@ -211,6 +249,12 @@ export default function ReportsPage() {
       {/* ── Goal vs Actual ──────────────────────────────────────────────────── */}
       {tab === 'goals' && (
         <div className="flex flex-col gap-5 animate-fade-in">
+          {!goalVsActual.some((day) => day.goal) && !goal.dailyCalorieTarget ? (
+            <Card className="p-8 text-center text-sm text-muted-foreground">
+              Create a nutrition goal to compare your intake against a target.
+            </Card>
+          ) : (
+          <>
           <Card className="p-5">
             <h3 className="text-sm font-semibold text-foreground mb-4">Actual vs Goal Calories</h3>
             <div className="h-64">
@@ -239,12 +283,14 @@ export default function ReportsPage() {
               <p className="text-xs text-muted-foreground mb-1">Avg Deficit / Surplus</p>
               <p className="mono text-2xl font-bold text-accent">
                 {Math.round(
-                  gvaData.reduce((acc, d) => acc + (d.goal - d.actual), 0) / gvaData.length
+                  gvaData.length ? gvaData.reduce((acc, d) => acc + (d.goal - d.actual), 0) / gvaData.length : 0
                 ).toLocaleString()}
                 <span className="text-sm text-muted-foreground"> kcal/day</span>
               </p>
             </Card>
           </div>
+          </>
+          )}
         </div>
       )}
 

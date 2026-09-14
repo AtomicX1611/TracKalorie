@@ -28,10 +28,14 @@ export const config = {
     },
 };
 export function validateConfig() {
-    if (!config.openai.apiKey && config.node.env === 'production') {
-        throw new Error('OPENAI_API_KEY is required in production');
-    }
-    if (!config.mongodb.uri) {
+    if (!config.mongodb.uri)
         throw new Error('MONGODB_URI is required');
-    }
+    if (config.node.env !== 'production')
+        return;
+    if (!config.openai.apiKey)
+        throw new Error('OPENAI_API_KEY is required in production');
+    if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'change_me_before_production')
+        throw new Error('JWT_SECRET must be set to a strong unique value in production');
+    if (!config.cors.clientOrigin || config.cors.clientOrigin.includes('localhost'))
+        throw new Error('CLIENT_ORIGIN must be set to the hosted client URL in production');
 }

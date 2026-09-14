@@ -13,9 +13,9 @@ export const nutritionService = {
         const { fromDate, toDate } = parseDateRange(from, to);
         return nutritionRepository.getMacroBreakdown(userId, fromDate, toDate, timezone, granularity);
     },
-    async getMicroSummary(userId, from, to) {
+    async getMicroSummary(userId, from, to, timezone) {
         const { fromDate, toDate } = parseDateRange(from, to);
-        return nutritionRepository.getMicroSummary(userId, fromDate, toDate);
+        return nutritionRepository.getMicroSummary(userId, fromDate, toDate, timezone);
     },
     async getGoalVsActual(userId, from, to, timezone) {
         const { fromDate, toDate } = parseDateRange(from, to);

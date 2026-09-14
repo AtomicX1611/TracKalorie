@@ -3,7 +3,7 @@ import { getBrowserTimezone } from '../lib/utils'
 
 // ── Axios instance ────────────────────────────────────────────────────────────
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: import.meta.env.VITE_API_URL || '/api/v1',
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -57,7 +57,7 @@ api.interceptors.response.use(
       }
 
       try {
-        const { data } = await axios.post('/api/v1/auth/refresh', { refreshToken })
+        const { data } = await axios.post(`${api.defaults.baseURL}/auth/refresh`, { refreshToken })
         const { accessToken, refreshToken: newRefresh } = data.data
         localStorage.setItem('accessToken', accessToken)
         localStorage.setItem('refreshToken', newRefresh)

@@ -18,6 +18,7 @@ export const LABEL_EXTRACTION_SCHEMA = {
         properties: {
             foodName: { type: 'string', description: 'Name of the food product' },
             servingSize: { type: 'string', description: 'Serving size description (e.g. "1 cup (240g)")' },
+            servingGrams: { type: ['number', 'null'], description: 'Serving weight in grams, extracted from the label when shown' },
             servingsPerContainer: { type: ['number', 'null'], description: 'Number of servings per container, null if not shown' },
             calories: { type: 'number', description: 'Calories per serving' },
             proteinG: { type: 'number', description: 'Protein in grams per serving' },
@@ -42,7 +43,7 @@ export const LABEL_EXTRACTION_SCHEMA = {
                 description: 'Your confidence 0.0-1.0 that the extraction is accurate',
             },
         },
-        required: ['foodName', 'servingSize', 'servingsPerContainer', 'calories', 'proteinG', 'carbG', 'fatG', 'micros', 'confidence'],
+        required: ['foodName', 'servingSize', 'servingGrams', 'servingsPerContainer', 'calories', 'proteinG', 'carbG', 'fatG', 'micros', 'confidence'],
         additionalProperties: false,
     },
 };
@@ -82,5 +83,5 @@ export const PLATE_EXTRACTION_SCHEMA = {
         additionalProperties: false,
     },
 };
-export const LABEL_SYSTEM_PROMPT = `You are a nutrition label reader. Extract all nutritional information from the image of a nutrition facts label. Be precise — this is an OCR task. If a value is not visible or not present on the label, use null. Report your confidence honestly.`;
-export const PLATE_SYSTEM_PROMPT = `You are a food portion estimator. Identify all food items visible in the image and estimate their nutritional content based on typical serving sizes and visual portion assessment. Be transparent about uncertainty — these are estimates, not precise measurements. Do not claim high confidence for plate estimations.`;
+export const LABEL_SYSTEM_PROMPT = `You are a deterministic nutrition label OCR reader. Read only values that are visibly printed on the nutrition label; never guess, substitute a typical value, or use outside product knowledge. Preserve the label's serving basis and units. If any value is unreadable or absent, use null where the schema permits it. Return the same values when the same image is submitted. Report confidence honestly.`;
+export const PLATE_SYSTEM_PROMPT = `You are a consistent food portion estimator. Identify only food items clearly visible in the image. Use standard USDA-style reference portions and round estimates to practical whole numbers or one decimal place; do not invent hidden ingredients or precision. Apply the same assumptions each time the same image is submitted. Be transparent about uncertainty and never claim high confidence for plate estimations.`;

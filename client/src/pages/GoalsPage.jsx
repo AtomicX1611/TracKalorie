@@ -88,24 +88,34 @@ export default function GoalsPage() {
   const [goal, setGoal] = useState(EMPTY_GOAL)
   const [history, setHistory] = useState([])
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
+    setError(null)
     Promise.all([goalsApi.getCurrent(), goalsApi.getHistory({ limit: 100 })])
       .then(([currentGoal, historyResult]) => {
         if (currentGoal) setGoal(currentGoal)
         setHistory(historyResult.data ?? [])
       })
-      .catch(() => setHistory([]))
+      .catch((err) => {
+        setHistory([])
+        setError(err?.response?.data?.error?.message ?? 'Unable to load goals.')
+      })
   }, [])
 
   const handleSave = async (data) => {
-    const newGoal = await goalsApi.create(
-      Object.fromEntries(Object.entries(data).map(([k, v]) => [k, v === '' ? undefined : Number(v)]))
-    )
-    setHistory((h) => [newGoal, ...h])
-    setGoal(newGoal)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    try {
+      setError(null)
+      const newGoal = await goalsApi.create(
+        Object.fromEntries(Object.entries(data).map(([k, v]) => [k, v === '' ? undefined : Number(v)]))
+      )
+      setHistory((h) => [newGoal, ...h])
+      setGoal(newGoal)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err) {
+      setError(err?.response?.data?.error?.message ?? 'Unable to save this goal.')
+    }
   }
 
   const macroCalories = goal.proteinTargetG * 4 + goal.carbTargetG * 4 + goal.fatTargetG * 9
@@ -118,6 +128,8 @@ export default function GoalsPage() {
         subtitle="Effective-dated — changes don't overwrite history"
         action={<Target className="w-5 h-5 text-accent" />}
       />
+
+      {error && <p className="mb-5 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">{error}</p>}
 
       {saved && (
         <div className="mb-5 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-accent/10 border border-accent/20 text-sm text-accent">

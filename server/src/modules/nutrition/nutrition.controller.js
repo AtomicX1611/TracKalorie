@@ -23,7 +23,7 @@ export const nutritionController = {
     async microSummary(req, res, next) {
         try {
             const { from, to } = req.query;
-            const data = await nutritionService.getMicroSummary(req.user.id, from, to);
+            const data = await nutritionService.getMicroSummary(req.user.id, from, to, req.timezone);
             res.status(200).json({ data });
         }
         catch (err) {

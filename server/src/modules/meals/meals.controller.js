@@ -43,7 +43,10 @@ export const mealsController = {
     },
     async update(req, res, next) {
         try {
-            const meal = await mealsService.updateMeal(req.user.id, String(req.params.id), req.body);
+            const meal = await mealsService.updateMeal(req.user.id, String(req.params.id), {
+                ...req.body,
+                timezone: req.timezone,
+            });
             res.status(200).json({ data: meal });
         }
         catch (err) {

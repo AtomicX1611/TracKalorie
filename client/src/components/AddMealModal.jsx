@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { Plus, Trash2 } from 'lucide-react'
 import { Modal, Button, Input, Select } from './ui'
@@ -9,8 +9,9 @@ const EMPTY_ITEM = {
   macros: { proteinG: '', carbG: '', fatG: '' },
 }
 
-export default function AddMealModal({ open, onClose, onAdd }) {
+export default function AddMealModal({ open, onClose, onAdd, meal = null, onUpdate = null }) {
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState(null)
 
   const { register, control, handleSubmit, reset, formState: { errors } } = useForm({
     defaultValues: {
@@ -22,12 +23,30 @@ export default function AddMealModal({ open, onClose, onAdd }) {
 
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
 
+  useEffect(() => {
+    if (!open) return
+    setError(null)
+    reset(meal ? {
+      mealType: meal.mealType,
+      date: meal.date.split('T')[0],
+      items: meal.items.map((item) => ({
+        name: item.name,
+        calories: item.calories,
+        quantity: item.quantity,
+        macros: item.macros,
+      })),
+    } : {
+      mealType: 'breakfast',
+      date: toDateStr(),
+      items: [{ ...EMPTY_ITEM }],
+    })
+  }, [open, meal, reset])
+
   const onSubmit = async (data) => {
     setSubmitting(true)
     try {
       // Coerce string numbers to actual numbers
-      const meal = {
-        _id: `m_${Date.now()}`,
+      const mealData = {
         mealType: data.mealType,
         date: data.date,
         source: 'manual',
@@ -43,26 +62,21 @@ export default function AddMealModal({ open, onClose, onAdd }) {
         })),
       }
       // Compute totals
-      meal.totals = meal.items.reduce(
-        (acc, it) => ({
-          calories: acc.calories + it.calories,
-          proteinG: acc.proteinG + it.macros.proteinG,
-          carbG: acc.carbG + it.macros.carbG,
-          fatG: acc.fatG + it.macros.fatG,
-        }),
-        { calories: 0, proteinG: 0, carbG: 0, fatG: 0 }
-      )
-      await onAdd?.(meal)
+      if (meal && onUpdate) await onUpdate(meal._id, mealData)
+      else await onAdd?.(mealData)
       reset()
       onClose()
+    } catch (err) {
+      setError(err?.response?.data?.error?.message ?? 'Unable to save this meal. Please try again.')
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Log a Meal" width="max-w-2xl">
+    <Modal open={open} onClose={onClose} title={meal ? 'Edit Meal' : 'Log a Meal'} width="max-w-2xl">
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+        {error && <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">{error}</p>}
         {/* Meal meta */}
         <div className="grid grid-cols-2 gap-4">
           <Select label="Meal type" {...register('mealType', { required: true })}>
@@ -170,7 +184,7 @@ export default function AddMealModal({ open, onClose, onAdd }) {
         {/* Actions */}
         <div className="flex gap-3 justify-end pt-2 border-t border-border">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" loading={submitting}>Log Meal</Button>
+          <Button type="submit" loading={submitting}>{meal ? 'Save Changes' : 'Log Meal'}</Button>
         </div>
       </form>
     </Modal>

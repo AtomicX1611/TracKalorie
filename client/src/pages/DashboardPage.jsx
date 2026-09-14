@@ -19,8 +19,10 @@ export default function DashboardPage() {
   const [weeklyTrend, setWeeklyTrend] = useState([])
   const [showAdd, setShowAdd] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
+    setError(null)
     const today = new Date()
     const fromDate = new Date(today)
     fromDate.setDate(today.getDate() - 6)
@@ -38,6 +40,7 @@ export default function DashboardPage() {
     }).catch(() => {
       setMeals([])
       setWeeklyTrend([])
+      setError('Unable to load dashboard data. Please try again.')
     })
   }, [refreshKey])
 
@@ -58,8 +61,12 @@ export default function DashboardPage() {
   }
 
   const handleDelete = async (id) => {
-    await mealsApi.remove(id)
-    setRefreshKey((key) => key + 1)
+    try {
+      await mealsApi.remove(id)
+      setRefreshKey((key) => key + 1)
+    } catch (err) {
+      setError(err?.response?.data?.error?.message ?? 'Unable to delete this meal.')
+    }
   }
 
   const greet = () => {
@@ -83,6 +90,7 @@ export default function DashboardPage() {
         </h1>
         <p className="text-sm text-muted-foreground mt-0.5">{formatDate(toDateStr())} · Here's your nutrition snapshot</p>
       </div>
+      {error && <p className="mb-5 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">{error}</p>}
 
       {/* Top stats row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

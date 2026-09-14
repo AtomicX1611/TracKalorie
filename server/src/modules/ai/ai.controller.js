@@ -12,7 +12,7 @@ export const aiController = {
             // multer populates req.file
             const file = req.file;
             if (!file) {
-             throw new AppError(400, 'Image file is required');
+             throw new AppError(400, 'BAD_REQUEST', 'Image file is required');
             }
             // File validation — MIME type allowlist
             if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {

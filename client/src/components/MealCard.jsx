@@ -17,7 +17,7 @@ const SOURCE_BADGE = {
   import:    { label: 'Import',   variant: 'default' },
 }
 
-export default function MealCard({ meal, onDelete }) {
+export default function MealCard({ meal, onDelete, onEdit }) {
   const [open, setOpen] = useState(false)
   const src = SOURCE_BADGE[meal.source] ?? SOURCE_BADGE.manual
 
@@ -79,14 +79,12 @@ export default function MealCard({ meal, onDelete }) {
               </div>
             ))}
           </div>
-          {onDelete && (
+          {(onEdit || onDelete) && (
             <div className="px-4 py-3 flex justify-end border-t border-border">
-              <button
-                onClick={() => onDelete(meal._id)}
-                className="text-xs text-destructive hover:text-destructive/80 transition-colors"
-              >
-                Delete meal
-              </button>
+              <div className="flex items-center gap-3">
+                {onEdit && <button onClick={() => onEdit(meal)} className="text-xs text-accent hover:text-accent/80 transition-colors">Edit meal</button>}
+                {onDelete && <button onClick={() => onDelete(meal._id)} className="text-xs text-destructive hover:text-destructive/80 transition-colors">Delete meal</button>}
+              </div>
             </div>
           )}
         </div>
