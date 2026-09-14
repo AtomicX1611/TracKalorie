@@ -12,7 +12,7 @@ const EMPTY_ITEM = {
 export default function AddMealModal({ open, onClose, onAdd }) {
   const [submitting, setSubmitting] = useState(false)
 
-  const { register, control, handleSubmit, watch, reset, formState: { errors } } = useForm({
+  const { register, control, handleSubmit, reset, formState: { errors } } = useForm({
     defaultValues: {
       mealType: 'breakfast',
       date: toDateStr(),

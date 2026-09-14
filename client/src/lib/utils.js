@@ -5,13 +5,16 @@ export const cn = (...inputs) => twMerge(clsx(inputs))
 
 export const toDateStr = (d = new Date()) => d.toISOString().split('T')[0]
 
+export const mealDateKey = (date) =>
+  typeof date === 'string' ? date.split('T')[0] : toDateStr(date)
+
 export const formatDate = (str) => {
-  const d = new Date(str + 'T12:00:00')
+  const d = new Date(str.includes('T') ? str : str + 'T12:00:00')
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 export const formatDateLong = (str) => {
-  const d = new Date(str + 'T12:00:00')
+  const d = new Date(str.includes('T') ? str : str + 'T12:00:00')
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 }
 

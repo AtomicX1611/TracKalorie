@@ -1,24 +1,39 @@
-import { useState, useMemo } from 'react'
-import { Plus, Search, Filter, UtensilsCrossed } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { Plus, Search, UtensilsCrossed } from 'lucide-react'
 import MealCard from '../components/MealCard'
 import AddMealModal from '../components/AddMealModal'
 import { Button, EmptyState, SectionHeader, Badge } from '../components/ui'
-import { toDateStr, formatDateLong } from '../lib/utils'
-import { dummyMeals } from '../lib/dummyData'
+import { toDateStr, formatDateLong, mealDateKey } from '../lib/utils'
+import { mealsApi } from '../api'
 
 const MEAL_TYPES = ['all', 'breakfast', 'lunch', 'dinner', 'snack']
 
 export default function MealsPage() {
-  const [meals, setMeals] = useState(dummyMeals)
+  const [meals, setMeals] = useState([])
   const [showAdd, setShowAdd] = useState(false)
   const [typeFilter, setTypeFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('')
   const [search, setSearch] = useState('')
 
+  useEffect(() => {
+    const today = new Date()
+    const fromDate = new Date(today)
+    fromDate.setDate(today.getDate() - 30)
+    const toDate = new Date(today)
+    toDate.setDate(today.getDate() + 30)
+    const params = dateFilter
+      ? { from: dateFilter, to: dateFilter, limit: 100 }
+      : { from: toDateStr(fromDate), to: toDateStr(toDate), limit: 100 }
+
+    mealsApi.list(params)
+      .then((result) => setMeals(result.data ?? []))
+      .catch(() => setMeals([]))
+  }, [dateFilter])
+
   const filtered = useMemo(() => {
     return meals.filter((m) => {
       if (typeFilter !== 'all' && m.mealType !== typeFilter) return false
-      if (dateFilter && m.date !== dateFilter) return false
+      if (dateFilter && mealDateKey(m.date) !== dateFilter) return false
       if (search) {
         const q = search.toLowerCase()
         return m.items.some((it) => it.name.toLowerCase().includes(q))
@@ -30,17 +45,25 @@ export default function MealsPage() {
   const grouped = useMemo(() => {
     const map = {}
     filtered.forEach((m) => {
-      if (!map[m.date]) map[m.date] = []
-      map[m.date].push(m)
+      const date = mealDateKey(m.date)
+      if (!map[date]) map[date] = []
+      map[date].push(m)
     })
     return Object.entries(map).sort(([a], [b]) => b.localeCompare(a))
   }, [filtered])
 
-  const handleAdd = (meal) => setMeals((p) => [meal, ...p])
-  const handleDelete = (id) => setMeals((p) => p.filter((m) => m._id !== id))
+  const handleAdd = async (meal) => {
+    const createdMeal = await mealsApi.create(meal)
+    setMeals((p) => [createdMeal, ...p])
+  }
+
+  const handleDelete = async (id) => {
+    await mealsApi.remove(id)
+    setMeals((p) => p.filter((m) => m._id !== id))
+  }
 
   const todayTotal = meals
-    .filter((m) => m.date === toDateStr())
+    .filter((m) => mealDateKey(m.date) === toDateStr())
     .reduce((acc, m) => acc + m.totals.calories, 0)
 
   return (

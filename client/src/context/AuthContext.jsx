@@ -1,50 +1,63 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-
-const AuthContext = createContext(null)
-
-// ── Dummy auth for UI-only mode ───────────────────────────────────────────────
-// When backend is live, swap the dummy* blocks with real API calls.
-
-const DUMMY_USER = { userId: '1', email: 'demo@trackalorie.app' }
+import { useState, useEffect, useCallback } from 'react'
+import { authApi } from '../api/auth'
+import { AuthContext } from './auth-context'
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState(() => {
+    if (!localStorage.getItem('accessToken')) return null
+    const stored = localStorage.getItem('tk_user')
+    if (!stored) return null
+    try { return JSON.parse(stored) } catch { return null }
+  })
+  const [loading, setLoading] = useState(() => Boolean(localStorage.getItem('accessToken')))
 
   useEffect(() => {
-    // Check localStorage for a stored "session"
-    const stored = localStorage.getItem('tk_user')
-    if (stored) {
-      try { setUser(JSON.parse(stored)) } catch (_) { /* ignore */ }
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    authApi.me()
+      .then((nextUser) => {
+        localStorage.setItem('tk_user', JSON.stringify(nextUser))
+        setUser(nextUser)
+      })
+      .catch(() => {
+        localStorage.removeItem('tk_user')
+        localStorage.removeItem('accessToken')
+        localStorage.removeItem('refreshToken')
+      })
+      .finally(() => setLoading(false))
+  }, [])
+
+  const login = useCallback(async (email, password) => {
+    const tokens = await authApi.login(email, password)
+    localStorage.setItem('accessToken', tokens.accessToken)
+    localStorage.setItem('refreshToken', tokens.refreshToken)
+    const u = await authApi.me()
+    localStorage.setItem('tk_user', JSON.stringify(u))
+    setUser(u)
+    return u
+  }, [])
+
+  const register = useCallback(async (email, password) => {
+    const tokens = await authApi.register(email, password)
+    localStorage.setItem('accessToken', tokens.accessToken)
+    localStorage.setItem('refreshToken', tokens.refreshToken)
+    const u = await authApi.me()
+    localStorage.setItem('tk_user', JSON.stringify(u))
+    setUser(u)
+    return u
+  }, [])
+
+  const logout = useCallback(async () => {
+    const refreshToken = localStorage.getItem('refreshToken')
+    try {
+      if (refreshToken) await authApi.logout(refreshToken)
+    } finally {
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('refreshToken')
+      localStorage.removeItem('tk_user')
+      setUser(null)
     }
-    setLoading(false)
-  }, [])
-
-  const login = useCallback(async (email, _password) => {
-    // TODO: swap with real API: const tokens = await authApi.login(email, password)
-    const u = { ...DUMMY_USER, email }
-    localStorage.setItem('tk_user', JSON.stringify(u))
-    localStorage.setItem('accessToken', 'dummy-access-token')
-    localStorage.setItem('refreshToken', 'dummy-refresh-token')
-    setUser(u)
-    return u
-  }, [])
-
-  const register = useCallback(async (email, _password) => {
-    // TODO: swap with real API: const tokens = await authApi.register(email, password)
-    const u = { ...DUMMY_USER, email }
-    localStorage.setItem('tk_user', JSON.stringify(u))
-    localStorage.setItem('accessToken', 'dummy-access-token')
-    localStorage.setItem('refreshToken', 'dummy-refresh-token')
-    setUser(u)
-    return u
-  }, [])
-
-  const logout = useCallback(() => {
-    localStorage.removeItem('tk_user')
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
-    setUser(null)
   }, [])
 
   return (
@@ -54,8 +67,3 @@ export function AuthProvider({ children }) {
   )
 }
 
-export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
-  return ctx
-}

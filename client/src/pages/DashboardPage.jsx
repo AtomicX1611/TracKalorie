@@ -1,23 +1,45 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, TrendingUp, Flame } from 'lucide-react'
 import CalorieRing from '../components/CalorieRing'
 import MacroBars from '../components/MacroBars'
 import MealCard from '../components/MealCard'
 import AddMealModal from '../components/AddMealModal'
 import { Button, Card, SectionHeader } from '../components/ui'
-import { useAuth } from '../context/AuthContext'
-import { toDateStr, formatDate } from '../lib/utils'
-import {
-  dummyGoal, dummyMeals, dummyTodayTotals, dummyWeeklyTrend,
-} from '../lib/dummyData'
+import { useAuth } from '../context/useAuth'
+import { toDateStr, formatDate, mealDateKey } from '../lib/utils'
+import { mealsApi, goalsApi, nutritionApi } from '../api'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts'
 
 export default function DashboardPage() {
   const { user } = useAuth()
-  const [meals, setMeals] = useState(dummyMeals)
+  const [meals, setMeals] = useState([])
+  const [goal, setGoal] = useState({ dailyCalorieTarget: 0, proteinTargetG: 0, carbTargetG: 0, fatTargetG: 0 })
+  const [weeklyTrend, setWeeklyTrend] = useState([])
   const [showAdd, setShowAdd] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => {
+    const today = new Date()
+    const fromDate = new Date(today)
+    fromDate.setDate(today.getDate() - 6)
+    const from = toDateStr(fromDate)
+    const to = toDateStr(today)
+
+    Promise.all([
+      mealsApi.list({ from: to, to, limit: 100 }),
+      goalsApi.getCurrent(),
+      nutritionApi.weeklyTrend({ from, to }),
+    ]).then(([mealResult, currentGoal, trend]) => {
+      setMeals(mealResult.data ?? [])
+      setGoal(currentGoal ?? { dailyCalorieTarget: 0, proteinTargetG: 0, carbTargetG: 0, fatTargetG: 0 })
+      setWeeklyTrend(trend ?? [])
+    }).catch(() => {
+      setMeals([])
+      setWeeklyTrend([])
+    })
+  }, [refreshKey])
 
   const todayTotals = meals.reduce(
     (acc, m) => ({
@@ -28,12 +50,17 @@ export default function DashboardPage() {
     }),
     { calories: 0, proteinG: 0, carbG: 0, fatG: 0 }
   )
+  const todayMeals = meals.filter((m) => mealDateKey(m.date) === toDateStr())
 
-  const handleAddMeal = (meal) => {
-    setMeals((prev) => [meal, ...prev])
+  const handleAddMeal = async (meal) => {
+    await mealsApi.create(meal)
+    setRefreshKey((key) => key + 1)
   }
 
-  const handleDelete = (id) => setMeals((prev) => prev.filter((m) => m._id !== id))
+  const handleDelete = async (id) => {
+    await mealsApi.remove(id)
+    setRefreshKey((key) => key + 1)
+  }
 
   const greet = () => {
     const h = new Date().getHours()
@@ -42,7 +69,7 @@ export default function DashboardPage() {
     return 'Good evening'
   }
 
-  const trendData = dummyWeeklyTrend.map((d) => ({
+  const trendData = weeklyTrend.map((d) => ({
     ...d,
     day: formatDate(d.day),
   }))
@@ -61,7 +88,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Calories Eaten', value: todayTotals.calories, unit: 'kcal', color: '#7CFFB2' },
-          { label: 'Remaining', value: Math.max(dummyGoal.dailyCalorieTarget - todayTotals.calories, 0), unit: 'kcal', color: '#60A5FA' },
+          { label: 'Remaining', value: Math.max(goal.dailyCalorieTarget - todayTotals.calories, 0), unit: 'kcal', color: '#60A5FA' },
           { label: 'Protein', value: Math.round(todayTotals.proteinG), unit: 'g', color: '#7CFFB2' },
           { label: 'Meals Logged', value: meals.length, unit: 'today', color: '#F59E0B' },
         ].map(({ label, value, unit, color }) => (
@@ -79,9 +106,9 @@ export default function DashboardPage() {
           <div className="w-full">
             <SectionHeader title="Today's Intake" subtitle="Calorie goal progress" />
           </div>
-          <CalorieRing consumed={todayTotals.calories} target={dummyGoal.dailyCalorieTarget} />
+          <CalorieRing consumed={todayTotals.calories} target={goal.dailyCalorieTarget} />
           <div className="w-full">
-            <MacroBars totals={todayTotals} goal={dummyGoal} />
+            <MacroBars totals={todayTotals} goal={goal} />
           </div>
         </Card>
 
@@ -135,7 +162,7 @@ export default function DashboardPage() {
                 </Button>
               }
             />
-            {meals.length === 0 ? (
+            {todayMeals.length === 0 ? (
               <div className="card flex flex-col items-center py-10 gap-2">
                 <Flame className="w-8 h-8 text-muted-foreground/30" />
                 <p className="text-sm text-muted-foreground">No meals logged today</p>
@@ -143,12 +170,12 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                {meals.slice(0, 3).map((m) => (
+                {todayMeals.slice(0, 3).map((m) => (
                   <MealCard key={m._id} meal={m} onDelete={handleDelete} />
                 ))}
-                {meals.length > 3 && (
+                {todayMeals.length > 3 && (
                   <p className="text-xs text-center text-muted-foreground pt-1">
-                    +{meals.length - 3} more — <a href="/meals" className="text-accent hover:underline">view all</a>
+                    +{todayMeals.length - 3} more — <a href="/meals" className="text-accent hover:underline">view all</a>
                   </p>
                 )}
               </div>

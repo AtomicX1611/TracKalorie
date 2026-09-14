@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BarChart3 } from 'lucide-react'
 import { Card, SectionHeader, Badge } from '../components/ui'
-import { formatDate, fmt, MACRO_COLORS } from '../lib/utils'
-import { dummyWeeklyTrend, dummyGoalVsActual, dummyGoal, dummyMicros } from '../lib/dummyData'
+import { formatDate, MACRO_COLORS, toDateStr } from '../lib/utils'
+import { goalsApi, nutritionApi } from '../api'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, ComposedChart, Line, Cell, PieChart, Pie, Legend,
@@ -38,28 +38,60 @@ const MICRO_LABELS = {
 
 export default function ReportsPage() {
   const [tab, setTab] = useState('trend')
+  const [weeklyTrend, setWeeklyTrend] = useState([])
+  const [goalVsActual, setGoalVsActual] = useState([])
+  const [macros, setMacros] = useState([])
+  const [micros, setMicros] = useState({})
+  const [goal, setGoal] = useState({ dailyCalorieTarget: 0, proteinTargetG: 0, carbTargetG: 0, fatTargetG: 0 })
 
-  const trendData = dummyWeeklyTrend.map((d) => ({ ...d, day: formatDate(d.day) }))
-  const gvaData = dummyGoalVsActual.map((d) => ({
+  useEffect(() => {
+    const today = new Date()
+    const fromDate = new Date(today)
+    fromDate.setDate(today.getDate() - 6)
+    const from = toDateStr(fromDate)
+    const to = toDateStr(today)
+
+    Promise.all([
+      nutritionApi.weeklyTrend({ from, to }),
+      nutritionApi.macros({ from, to, granularity: 'day' }),
+      nutritionApi.goalVsActual({ from, to }),
+      nutritionApi.micros({ from, to }),
+      goalsApi.getCurrent(),
+    ]).then(([trend, macroData, goalData, microData, currentGoal]) => {
+      setWeeklyTrend(trend ?? [])
+      setMacros(macroData ?? [])
+      setGoalVsActual(goalData ?? [])
+      setMicros(microData ?? {})
+      setGoal(currentGoal ?? { dailyCalorieTarget: 0, proteinTargetG: 0, carbTargetG: 0, fatTargetG: 0 })
+    }).catch(() => {
+      setWeeklyTrend([])
+      setMacros([])
+      setGoalVsActual([])
+      setMicros({})
+    })
+  }, [])
+
+  const trendData = weeklyTrend.map((d) => ({ ...d, day: formatDate(d.day) }))
+  const gvaData = goalVsActual.filter((d) => d.goal).map((d) => ({
     day: formatDate(d.day),
     actual: d.actual.calories,
     goal: d.goal.dailyCalorieTarget,
   }))
 
-  const macroData = dummyWeeklyTrend.map((d) => ({
-    day: formatDate(d.day),
+  const macroChartData = macros.map((d) => ({
+    day: formatDate(d.period),
     Protein: Math.round(d.proteinG * 4),
     Carbs:   Math.round(d.carbG * 4),
     Fat:     Math.round(d.fatG * 9),
   }))
 
   const pieData = [
-    { name: 'Protein', value: Math.round(dummyGoal.proteinTargetG * 4), color: MACRO_COLORS.protein },
-    { name: 'Carbs',   value: Math.round(dummyGoal.carbTargetG * 4),   color: MACRO_COLORS.carb },
-    { name: 'Fat',     value: Math.round(dummyGoal.fatTargetG * 9),    color: MACRO_COLORS.fat },
+    { name: 'Protein', value: Math.round(goal.proteinTargetG * 4), color: MACRO_COLORS.protein },
+    { name: 'Carbs',   value: Math.round(goal.carbTargetG * 4),   color: MACRO_COLORS.carb },
+    { name: 'Fat',     value: Math.round(goal.fatTargetG * 9),    color: MACRO_COLORS.fat },
   ]
 
-  const microsData = Object.entries(dummyMicros).map(([key, val]) => ({
+  const microsData = Object.entries(micros).map(([key, val]) => ({
     name: MICRO_LABELS[key],
     value: val,
     target: MICROS_DAILY_TARGETS[key],
@@ -125,9 +157,9 @@ export default function ReportsPage() {
           {/* Summary stats */}
           <div className="grid grid-cols-3 gap-4">
             {[
-              { label: '7-day Avg', value: Math.round(dummyWeeklyTrend.reduce((a, d) => a + d.calories, 0) / 7), unit: 'kcal/day' },
-              { label: 'Peak Day', value: Math.max(...dummyWeeklyTrend.map((d) => d.calories)), unit: 'kcal' },
-              { label: 'Days On Track', value: dummyWeeklyTrend.filter((d) => Math.abs(d.calories - 2200) < 200).length, unit: `/ ${dummyWeeklyTrend.length}` },
+              { label: '7-day Avg', value: trendData.length ? Math.round(trendData.reduce((a, d) => a + d.calories, 0) / trendData.length) : 0, unit: 'kcal/day' },
+              { label: 'Peak Day', value: trendData.length ? Math.max(...trendData.map((d) => d.calories)) : 0, unit: 'kcal' },
+              { label: 'Days On Track', value: gvaData.filter((d) => Math.abs(d.actual - d.goal) < 200).length, unit: `/ ${gvaData.length}` },
             ].map(({ label, value, unit }) => (
               <Card key={label} className="p-4 text-center">
                 <p className="mono text-2xl font-bold text-accent">{value.toLocaleString()}</p>
@@ -146,7 +178,7 @@ export default function ReportsPage() {
             <h3 className="text-sm font-semibold text-foreground mb-4">Daily Macro Calories</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={macroData} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
+                <BarChart data={macroChartData} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="day" />
                   <YAxis />

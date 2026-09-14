@@ -7,12 +7,9 @@ import { Types } from 'mongoose';
  * KEY DESIGN DECISION: All $dateTrunc calls use the `timezone` parameter
  * passed from req.timezone (set by timezone.middleware.ts from the X-Timezone header).
  *
- * Why loggedAt, not date?
- * - meals.date is pre-computed UTC-midnight at write time using the timezone active then
- * - meals.loggedAt is the raw timestamp of the actual log event
- * - Report aggregations bucket off loggedAt + current request timezone via $dateTrunc
- *   so a user who changed their timezone still sees historically consistent day buckets
- * - The bucketing logic lives here (aggregation layer), not duplicated between write and read
+ * Reports use meals.date because it represents the calendar day selected by the user.
+ * This keeps backfilled meals in the day they belong to rather than the day they were entered.
+ * The bucketing logic lives here (aggregation layer), not duplicated between write and read.
  *
  * This is Section 5.10 of the architecture spec — a common interview gotcha.
  */
@@ -22,16 +19,16 @@ export const nutritionRepository = {
             {
                 $match: {
                     userId: new Types.ObjectId(userId),
-                    loggedAt: { $gte: from, $lte: to },
+                    date: { $gte: from, $lte: to },
                 },
             },
             {
                 $group: {
                     _id: {
                         $dateTrunc: {
-                            date: '$loggedAt',
+                            date: '$date',
                             unit: 'day',
-                            timezone, // THE KEY LINE — dynamic timezone from frontend header
+                            timezone: 'UTC',
                         },
                     },
                     calories: { $sum: '$totals.calories' },
@@ -48,7 +45,7 @@ export const nutritionRepository = {
                         $dateToString: {
                             format: '%Y-%m-%d',
                             date: '$_id',
-                            timezone,
+                            timezone: 'UTC',
                         },
                     },
                     calories: 1,
@@ -66,16 +63,16 @@ export const nutritionRepository = {
             {
                 $match: {
                     userId: new Types.ObjectId(userId),
-                    loggedAt: { $gte: from, $lte: to },
+                    date: { $gte: from, $lte: to },
                 },
             },
             {
                 $group: {
                     _id: {
                         $dateTrunc: {
-                            date: '$loggedAt',
+                            date: '$date',
                             unit,
-                            timezone,
+                            timezone: 'UTC',
                         },
                     },
                     calories: { $sum: '$totals.calories' },
@@ -92,7 +89,7 @@ export const nutritionRepository = {
                         $dateToString: {
                             format: granularity === 'week' ? '%Y-W%V' : '%Y-%m-%d',
                             date: '$_id',
-                            timezone,
+                            timezone: 'UTC',
                         },
                     },
                     calories: 1,
@@ -109,7 +106,7 @@ export const nutritionRepository = {
             {
                 $match: {
                     userId: new Types.ObjectId(userId),
-                    loggedAt: { $gte: from, $lte: to },
+                    date: { $gte: from, $lte: to },
                 },
             },
             { $unwind: '$items' },
@@ -133,18 +130,18 @@ export const nutritionRepository = {
         };
     },
     async getGoalVsActual(userId, from, to, timezone) {
-        // Step 1: aggregate actuals per day (timezone-aware)
+        // Step 1: aggregate actuals per selected calendar day
         const actuals = await MealModel.aggregate([
             {
                 $match: {
                     userId: new Types.ObjectId(userId),
-                    loggedAt: { $gte: from, $lte: to },
+                    date: { $gte: from, $lte: to },
                 },
             },
             {
                 $group: {
                     _id: {
-                        $dateTrunc: { date: '$loggedAt', unit: 'day', timezone },
+                        $dateTrunc: { date: '$date', unit: 'day', timezone: 'UTC' },
                     },
                     calories: { $sum: '$totals.calories' },
                     proteinG: { $sum: '$totals.proteinG' },

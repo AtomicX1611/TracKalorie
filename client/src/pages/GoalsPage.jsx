@@ -1,20 +1,37 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Target, Plus, CheckCircle2, Clock } from 'lucide-react'
 import { Button, Card, SectionHeader, Badge, Input } from '../components/ui'
 import { formatDateLong, fmt } from '../lib/utils'
-import { dummyGoal, dummyGoalHistory } from '../lib/dummyData'
+import { goalsApi } from '../api'
 
-function GoalForm({ onSave }) {
-  const { register, handleSubmit, formState: { errors } } = useForm({
+const EMPTY_GOAL = {
+  dailyCalorieTarget: 0,
+  proteinTargetG: 0,
+  carbTargetG: 0,
+  fatTargetG: 0,
+}
+
+function GoalForm({ onSave, initialGoal }) {
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
     defaultValues: {
-      dailyCalorieTarget: dummyGoal.dailyCalorieTarget,
-      proteinTargetG: dummyGoal.proteinTargetG,
-      carbTargetG: dummyGoal.carbTargetG,
-      fatTargetG: dummyGoal.fatTargetG,
+      dailyCalorieTarget: initialGoal.dailyCalorieTarget,
+      proteinTargetG: initialGoal.proteinTargetG,
+      carbTargetG: initialGoal.carbTargetG,
+      fatTargetG: initialGoal.fatTargetG,
       weightGoalKg: '',
     },
   })
+
+  useEffect(() => {
+    reset({
+      dailyCalorieTarget: initialGoal.dailyCalorieTarget,
+      proteinTargetG: initialGoal.proteinTargetG,
+      carbTargetG: initialGoal.carbTargetG,
+      fatTargetG: initialGoal.fatTargetG,
+      weightGoalKg: initialGoal.weightGoalKg ?? '',
+    })
+  }, [initialGoal, reset])
 
   return (
     <form onSubmit={handleSubmit(onSave)} className="flex flex-col gap-4">
@@ -68,16 +85,23 @@ function GoalForm({ onSave }) {
 }
 
 export default function GoalsPage() {
-  const [goal, setGoal] = useState(dummyGoal)
-  const [history, setHistory] = useState(dummyGoalHistory)
+  const [goal, setGoal] = useState(EMPTY_GOAL)
+  const [history, setHistory] = useState([])
   const [saved, setSaved] = useState(false)
 
-  const handleSave = (data) => {
-    const newGoal = {
-      _id: `g_${Date.now()}`,
-      ...Object.fromEntries(Object.entries(data).map(([k, v]) => [k, v === '' ? undefined : Number(v)])),
-      effectiveFrom: new Date().toISOString().split('T')[0],
-    }
+  useEffect(() => {
+    Promise.all([goalsApi.getCurrent(), goalsApi.getHistory({ limit: 100 })])
+      .then(([currentGoal, historyResult]) => {
+        if (currentGoal) setGoal(currentGoal)
+        setHistory(historyResult.data ?? [])
+      })
+      .catch(() => setHistory([]))
+  }, [])
+
+  const handleSave = async (data) => {
+    const newGoal = await goalsApi.create(
+      Object.fromEntries(Object.entries(data).map(([k, v]) => [k, v === '' ? undefined : Number(v)]))
+    )
     setHistory((h) => [newGoal, ...h])
     setGoal(newGoal)
     setSaved(true)
@@ -85,6 +109,7 @@ export default function GoalsPage() {
   }
 
   const macroCalories = goal.proteinTargetG * 4 + goal.carbTargetG * 4 + goal.fatTargetG * 9
+  const macroCaloriesForDisplay = macroCalories || 1
 
   return (
     <div className="p-6 max-w-3xl mx-auto animate-fade-in">
@@ -133,8 +158,8 @@ export default function GoalsPage() {
             ].map(({ label, cal, color }) => (
               <div
                 key={label}
-                style={{ flex: cal / macroCalories, background: color }}
-                title={`${label}: ${Math.round((cal / macroCalories) * 100)}%`}
+                style={{ flex: cal / macroCaloriesForDisplay, background: color }}
+                title={`${label}: ${Math.round((cal / macroCaloriesForDisplay) * 100)}%`}
               />
             ))}
           </div>
@@ -147,7 +172,7 @@ export default function GoalsPage() {
               <div key={label} className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full" style={{ background: color }} />
                 <span className="text-xs text-muted-foreground">
-                  {label} <span className="mono" style={{ color }}>{Math.round((cal / macroCalories) * 100)}%</span>
+                  {label} <span className="mono" style={{ color }}>{Math.round((cal / macroCaloriesForDisplay) * 100)}%</span>
                 </span>
               </div>
             ))}
@@ -162,7 +187,7 @@ export default function GoalsPage() {
           <h3 className="text-sm font-semibold text-foreground">Set New Goal</h3>
           <span className="text-xs text-muted-foreground">(previous goals are preserved)</span>
         </div>
-        <GoalForm onSave={handleSave} />
+        <GoalForm onSave={handleSave} initialGoal={goal} />
       </Card>
 
       {/* History */}

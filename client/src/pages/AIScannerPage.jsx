@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
-import { ScanLine, Upload, CheckCircle2, AlertTriangle, X, Loader2, Camera } from 'lucide-react'
-import { Button, Card, Badge, SectionHeader } from '../components/ui'
+import { ScanLine, Upload, CheckCircle2, AlertTriangle, X, Camera } from 'lucide-react'
+import { Button, Card, SectionHeader } from '../components/ui'
 import { fmt } from '../lib/utils'
 
 // Simulated AI extraction result for UI demo
