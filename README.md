@@ -83,4 +83,3 @@ See [docs/api-design.md](docs/api-design.md) for request and response details.
 - [AI architecture](docs/ai-architecture.md)
 - [Testing](docs/testing.md)
 
-The private interview notes at `docs/interview.md` are intentionally ignored by Git.

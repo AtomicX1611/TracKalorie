@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Plus, Search, UtensilsCrossed } from 'lucide-react'
+import { Plus, Search, UtensilsCrossed, FileUp } from 'lucide-react'
 import MealCard from '../components/MealCard'
 import AddMealModal from '../components/AddMealModal'
+import BulkPdfImportModal from '../components/BulkPdfImportModal'
 import { Button, EmptyState, SectionHeader, Badge } from '../components/ui'
 import { toDateStr, formatDateLong, mealDateKey } from '../lib/utils'
 import { mealsApi } from '../api'
@@ -11,6 +12,7 @@ const MEAL_TYPES = ['all', 'breakfast', 'lunch', 'dinner', 'snack']
 export default function MealsPage() {
   const [meals, setMeals] = useState([])
   const [showAdd, setShowAdd] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [typeFilter, setTypeFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('')
   const [search, setSearch] = useState('')
@@ -129,9 +131,14 @@ export default function MealsPage() {
         title="Meal Log"
         subtitle={`${meals.length} meals tracked · ${Math.round(todayTotal).toLocaleString()} kcal today`}
         action={
-          <Button onClick={() => setShowAdd(true)}>
-            <Plus className="w-4 h-4" /> Log Meal
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => setShowImport(true)}>
+              <FileUp className="w-4 h-4" /> Import CSV
+            </Button>
+            <Button onClick={() => setShowAdd(true)}>
+              <Plus className="w-4 h-4" /> Log Meal
+            </Button>
+          </div>
         }
       />
 
@@ -216,6 +223,11 @@ export default function MealsPage() {
 
       <AddMealModal open={showAdd} onClose={() => setShowAdd(false)} onAdd={handleAdd} />
       <AddMealModal open={Boolean(editingMeal)} meal={editingMeal} onClose={() => setEditingMeal(null)} onUpdate={handleUpdate} />
+      <BulkPdfImportModal
+        open={showImport}
+        onClose={() => setShowImport(false)}
+        onImported={() => setRefreshKey((k) => k + 1)}
+      />
     </div>
   )
 }

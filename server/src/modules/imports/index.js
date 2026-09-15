@@ -1,1 +1,1 @@
-// imports module — Phase scaffold placeholder
+export { importsRouter } from './imports.routes.js';

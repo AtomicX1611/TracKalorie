@@ -15,6 +15,7 @@ import { mealsRouter } from './modules/meals/meals.routes.js';
 import { nutritionRouter } from './modules/nutrition/nutrition.routes.js';
 import { aiRouter } from './modules/ai/ai.routes.js';
 import { chatRouter } from './modules/chat/index.js';
+import { importsRouter } from './modules/imports/index.js';
 export function createApp() {
     const app = express();
     app.use(helmet());
@@ -34,7 +35,7 @@ export function createApp() {
             'Idempotency-Key',
         ],
     }));
-    app.use(express.json({ limit: '1mb' }));
+    app.use(express.json({ limit: '5mb' }));
     app.use(express.urlencoded({ extended: true }));
     if (config.node.env !== 'test') {
         app.use(morgan(config.node.env === 'production' ? 'combined' : 'dev'));
@@ -64,6 +65,7 @@ export function createApp() {
     app.use('/api/v1/nutrition', nutritionRouter);
     app.use('/api/v1/ai', aiRouter);
     app.use('/api/v1/chat', chatRouter);
+    app.use('/api/v1/imports', importsRouter);
     // ─── 404 handler ──────────────────────────────────────────────────────────
     app.use((_req, res) => {
         res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
