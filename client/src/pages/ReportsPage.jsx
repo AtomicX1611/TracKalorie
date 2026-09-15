@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { BarChart3 } from 'lucide-react'
-import { Card, SectionHeader, Badge } from '../components/ui'
+import { Card, SectionHeader, Select } from '../components/ui'
 import { formatDate, MACRO_COLORS, toDateStr } from '../lib/utils'
 import { goalsApi, nutritionApi } from '../api'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, ComposedChart, Line, Cell, PieChart, Pie, Legend,
+  ResponsiveContainer, ComposedChart, Line, LineChart, Cell, PieChart, Pie, Legend,
   CartesianGrid,
 } from 'recharts'
 
@@ -19,8 +19,21 @@ const TT_STYLE = {
 const MICROS_DAILY_TARGETS = {
   vitaminA_mcg: 900,
   vitaminC_mg: 90,
+  vitaminD_mcg: 15,
+  vitaminE_mg: 15,
+  vitaminK_mcg: 120,
+  thiamin_mg: 1.2,
+  riboflavin_mg: 1.3,
+  niacin_mg: 16,
+  vitaminB6_mg: 1.3,
+  vitaminB12_mcg: 2.4,
+  folate_mcg: 400,
   calcium_mg: 1000,
   iron_mg: 18,
+  magnesium_mg: 400,
+  potassium_mg: 4700,
+  zinc_mg: 11,
+  selenium_mcg: 55,
   sodium_mg: 2300,
   fiber_g: 30,
   sugar_g: 50,
@@ -29,11 +42,32 @@ const MICROS_DAILY_TARGETS = {
 const MICRO_LABELS = {
   vitaminA_mcg: 'Vitamin A',
   vitaminC_mg: 'Vitamin C',
+  vitaminD_mcg: 'Vitamin D',
+  vitaminE_mg: 'Vitamin E',
+  vitaminK_mcg: 'Vitamin K',
+  thiamin_mg: 'Thiamin (B1)',
+  riboflavin_mg: 'Riboflavin (B2)',
+  niacin_mg: 'Niacin (B3)',
+  vitaminB6_mg: 'Vitamin B6',
+  vitaminB12_mcg: 'Vitamin B12',
+  folate_mcg: 'Folate (B9)',
   calcium_mg: 'Calcium',
   iron_mg: 'Iron',
+  magnesium_mg: 'Magnesium',
+  potassium_mg: 'Potassium',
+  zinc_mg: 'Zinc',
+  selenium_mcg: 'Selenium',
   sodium_mg: 'Sodium',
   fiber_g: 'Fiber',
   sugar_g: 'Sugar',
+}
+
+const MICRO_UNITS = {
+  vitaminA_mcg: 'mcg', vitaminC_mg: 'mg', vitaminD_mcg: 'mcg', vitaminE_mg: 'mg',
+  vitaminK_mcg: 'mcg', thiamin_mg: 'mg', riboflavin_mg: 'mg', niacin_mg: 'mg',
+  vitaminB6_mg: 'mg', vitaminB12_mcg: 'mcg', folate_mcg: 'mcg', calcium_mg: 'mg',
+  iron_mg: 'mg', magnesium_mg: 'mg', potassium_mg: 'mg', zinc_mg: 'mg',
+  selenium_mcg: 'mcg', sodium_mg: 'mg', fiber_g: 'g', sugar_g: 'g',
 }
 
 export default function ReportsPage() {
@@ -42,6 +76,7 @@ export default function ReportsPage() {
   const [goalVsActual, setGoalVsActual] = useState([])
   const [macros, setMacros] = useState([])
   const [micros, setMicros] = useState([])
+  const [selectedMicro, setSelectedMicro] = useState('vitaminC_mg')
   const [goal, setGoal] = useState({ dailyCalorieTarget: 0, proteinTargetG: 0, carbTargetG: 0, fatTargetG: 0 })
   const [includeMissingDays, setIncludeMissingDays] = useState(true)
   const [reportRange, setReportRange] = useState({ from: '', to: '' })
@@ -136,12 +171,19 @@ export default function ReportsPage() {
   const microDays = includeMissingDays
     ? rangeDays.map((day) => micros.find((item) => item.day === day) ?? { day })
     : micros
-  const microsData = microDays.flatMap((day) => Object.entries(MICRO_LABELS).map(([key, label]) => ({
-    name: `${label} · ${formatDate(day.day)}`,
-    value: day[key] ?? 0,
-    target: MICROS_DAILY_TARGETS[key],
-    pct: Math.round(((day[key] ?? 0) / MICROS_DAILY_TARGETS[key]) * 100),
-  })))
+  const selectedMicroTarget = MICROS_DAILY_TARGETS[selectedMicro]
+  const selectedMicroUnit = MICRO_UNITS[selectedMicro]
+  const microChartData = microDays.map((day) => ({
+    day: formatDate(day.day),
+    value: Number(day[selectedMicro] ?? 0),
+    target: selectedMicroTarget,
+  }))
+  const microAverage = microChartData.length
+    ? microChartData.reduce((total, day) => total + day.value, 0) / microChartData.length
+    : 0
+  const microAveragePct = selectedMicroTarget > 0
+    ? Math.round((microAverage / selectedMicroTarget) * 100)
+    : 0
 
   const TABS = [
     { id: 'trend',  label: 'Calorie Trend' },
@@ -311,36 +353,73 @@ export default function ReportsPage() {
       {/* ── Micronutrients ─────────────────────────────────────────────────── */}
       {tab === 'micros' && (
         <Card className="p-5 animate-fade-in">
-          <h3 className="text-sm font-semibold text-foreground mb-5">7-Day Micronutrient Summary</h3>
-          <div className="flex flex-col gap-4">
-            {microsData.map(({ name, value, target, pct }) => {
-              const over = pct > 100
-              const color = over ? '#EF4444' : pct > 70 ? '#7CFFB2' : '#F59E0B'
-              return (
-                <div key={name} className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground">{name}</span>
-                    <div className="flex items-center gap-3">
-                      <span className="mono text-xs text-muted-foreground">
-                        {value} / {target}
-                      </span>
-                      <Badge variant={over ? 'danger' : pct > 70 ? 'accent' : 'warning'}>
-                        {pct}%
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-surface-elevated overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(pct, 100)}%`, background: color }}
-                    />
-                  </div>
-                </div>
-              )
-            })}
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">7-Day Micronutrient Trend</h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Select one nutrient to inspect daily consumption without a long list.
+              </p>
+            </div>
+            <Select
+              label="Nutrient"
+              value={selectedMicro}
+              onChange={(event) => setSelectedMicro(event.target.value)}
+              className="sm:w-56"
+            >
+              {Object.entries(MICRO_LABELS).map(([key, label]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </Select>
           </div>
+
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={microChartData} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="day" />
+                <YAxis />
+                <Tooltip
+                  {...TT_STYLE}
+                  formatter={(value, name) => [
+                    `${Number(value).toFixed(1)} ${selectedMicroUnit}`,
+                    name === 'value' ? MICRO_LABELS[selectedMicro] : 'Daily target',
+                  ]}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#7CFFB2"
+                  strokeWidth={2}
+                  dot={{ r: 4, fill: '#7CFFB2' }}
+                  activeDot={{ r: 6 }}
+                  name="value"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="target"
+                  stroke="#F59E0B"
+                  strokeWidth={2}
+                  strokeDasharray="5 3"
+                  dot={false}
+                  name="target"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mt-5">
+            <div className="border border-border rounded-lg p-4 text-center">
+              <p className="mono text-2xl font-bold text-accent">{microAverage.toFixed(1)} {selectedMicroUnit}</p>
+              <p className="text-xs text-muted-foreground">7-day daily average</p>
+            </div>
+            <div className="border border-border rounded-lg p-4 text-center">
+              <p className="mono text-2xl font-bold text-accent">{microAveragePct}%</p>
+              <p className="text-xs text-muted-foreground">Average of {selectedMicroTarget} {selectedMicroUnit} target</p>
+            </div>
+          </div>
+
           <p className="text-xs text-muted-foreground/60 mt-5">
-            * Daily targets based on general guidelines (NIH). Values are 7-day totals.
+            * Daily targets are general reference values. The dashed line shows the selected nutrient&apos;s daily target.
           </p>
         </Card>
       )}
