@@ -27,6 +27,15 @@ export const getBrowserTimezone = () =>
 export const fmt = (n, decimals = 0) =>
   (Math.round(n * 10 ** decimals) / 10 ** decimals).toFixed(decimals)
 
+export const apiErrorMessage = (error, fallback) => {
+  const apiError = error?.response?.data?.error
+  const details = apiError?.details
+  const detailText = Array.isArray(details)
+    ? details.map((detail) => `${detail.path ? `${detail.path}: ` : ''}${detail.message}`).join(' ')
+    : ''
+  return [apiError?.message, detailText].filter(Boolean).join(' ') || error?.message || fallback
+}
+
 export const MACRO_COLORS = {
   protein: '#7CFFB2',
   carb:    '#60A5FA',

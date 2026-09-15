@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Target, Plus, CheckCircle2, Clock } from 'lucide-react'
 import { Button, Card, SectionHeader, Badge, Input } from '../components/ui'
-import { formatDateLong, fmt } from '../lib/utils'
+import { apiErrorMessage, formatDateLong, fmt } from '../lib/utils'
 import { goalsApi } from '../api'
 
 const EMPTY_GOAL = {
@@ -42,7 +42,7 @@ function GoalForm({ onSave, initialGoal }) {
             type="number"
             min="0"
             max="10000"
-            {...register('dailyCalorieTarget', { required: 'Required', min: 0 })}
+            {...register('dailyCalorieTarget', { required: 'Required', min: { value: 1, message: 'Must be greater than zero' } })}
             error={errors.dailyCalorieTarget?.message}
           />
         </div>
@@ -50,21 +50,21 @@ function GoalForm({ onSave, initialGoal }) {
           label="Protein Target (g)"
           type="number"
           min="0"
-          {...register('proteinTargetG', { required: 'Required', min: 0 })}
+          {...register('proteinTargetG', { required: 'Required', min: { value: 0.01, message: 'Must be greater than zero' } })}
           error={errors.proteinTargetG?.message}
         />
         <Input
           label="Carb Target (g)"
           type="number"
           min="0"
-          {...register('carbTargetG', { required: 'Required', min: 0 })}
+          {...register('carbTargetG', { required: 'Required', min: { value: 0.01, message: 'Must be greater than zero' } })}
           error={errors.carbTargetG?.message}
         />
         <Input
           label="Fat Target (g)"
           type="number"
           min="0"
-          {...register('fatTargetG', { required: 'Required', min: 0 })}
+          {...register('fatTargetG', { min: 0 })}
           error={errors.fatTargetG?.message}
         />
         <Input
@@ -123,18 +123,19 @@ export default function GoalsPage() {
     try {
       setError(null)
       const newGoal = await goalsApi.create(
-        Object.fromEntries(Object.entries(data).map(([k, v]) => [k, v === '' ? undefined : Number(v)]))
+        Object.fromEntries(Object.entries(data).map(([k, v]) => [k, v === '' || v === undefined ? undefined : Number(v)]))
       )
       setHistory((h) => [newGoal, ...h])
       setGoal(newGoal)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
-      setError(err?.response?.data?.error?.message ?? 'Unable to save this goal.')
+      setError(apiErrorMessage(err, 'Unable to save this goal.'))
     }
   }
 
-  const macroCalories = goal.proteinTargetG * 4 + goal.carbTargetG * 4 + goal.fatTargetG * 9
+  const fatTargetG = goal.fatTargetG ?? 0
+  const macroCalories = goal.proteinTargetG * 4 + goal.carbTargetG * 4 + fatTargetG * 9
   const macroCaloriesForDisplay = macroCalories || 1
 
   return (
@@ -165,7 +166,7 @@ export default function GoalsPage() {
             { label: 'Calories', value: goal.dailyCalorieTarget, unit: 'kcal/day', color: '#7CFFB2' },
             { label: 'Protein',  value: goal.proteinTargetG,    unit: 'g/day',    color: '#7CFFB2' },
             { label: 'Carbs',    value: goal.carbTargetG,       unit: 'g/day',    color: '#60A5FA' },
-            { label: 'Fat',      value: goal.fatTargetG,        unit: 'g/day',    color: '#F59E0B' },
+            { label: 'Fat',      value: goal.fatTargetG ?? 0,   unit: 'g/day',    color: '#F59E0B' },
           ].map(({ label, value, unit, color }) => (
             <div key={label} className="card p-3 text-center">
               <p className="mono text-xl font-bold" style={{ color }}>{value}</p>
@@ -182,7 +183,7 @@ export default function GoalsPage() {
             {[
               { label: 'Protein', g: goal.proteinTargetG, cal: goal.proteinTargetG * 4, color: '#7CFFB2' },
               { label: 'Carbs',   g: goal.carbTargetG,   cal: goal.carbTargetG * 4,   color: '#60A5FA' },
-              { label: 'Fat',     g: goal.fatTargetG,    cal: goal.fatTargetG * 9,    color: '#F59E0B' },
+              { label: 'Fat',     g: fatTargetG,          cal: fatTargetG * 9,          color: '#F59E0B' },
             ].map(({ label, cal, color }) => (
               <div
                 key={label}
@@ -195,7 +196,7 @@ export default function GoalsPage() {
             {[
               { label: 'Protein', cal: goal.proteinTargetG * 4, color: '#7CFFB2' },
               { label: 'Carbs',   cal: goal.carbTargetG * 4,   color: '#60A5FA' },
-              { label: 'Fat',     cal: goal.fatTargetG * 9,    color: '#F59E0B' },
+              { label: 'Fat',     cal: fatTargetG * 9,          color: '#F59E0B' },
             ].map(({ label, cal, color }) => (
               <div key={label} className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full" style={{ background: color }} />
@@ -233,7 +234,7 @@ export default function GoalsPage() {
                   {i === 0 && <Badge variant="accent">Current</Badge>}
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {fmt(g.proteinTargetG)}P · {fmt(g.carbTargetG)}C · {fmt(g.fatTargetG)}F
+                  {fmt(g.proteinTargetG)}P · {fmt(g.carbTargetG)}C · {fmt(g.fatTargetG ?? 0)}F
                 </p>
               </div>
               <p className="text-xs text-muted-foreground">

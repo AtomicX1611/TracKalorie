@@ -19,7 +19,7 @@ const MacrosSchema = new mongoose.Schema(
   {
     proteinG: { type: Number, required: true, min: 0 },
     carbG:    { type: Number, required: true, min: 0 },
-    fatG:     { type: Number, required: true, min: 0 },
+    fatG:     { type: Number, min: 0 },
   },
   { _id: false }
 );
@@ -31,7 +31,7 @@ const FoodItemSchema = new mongoose.Schema(
       amount: { type: Number, required: true, min: 0 },
       unit:   { type: String, required: true, trim: true },
     },
-    calories: { type: Number, required: true, min: 0 },
+    calories: { type: Number, required: true, min: 1 },
     macros:   { type: MacrosSchema, required: true },
     micros:   MicrosSchema,
   },

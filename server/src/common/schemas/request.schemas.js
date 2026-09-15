@@ -23,10 +23,10 @@ export const RefreshSchema = z.object({
 // ─── Goal request schemas ─────────────────────────────────────────────────────
 export const CreateGoalSchema = z.object({
     body: z.object({
-        dailyCalorieTarget: z.number().min(0).max(10000),
-        proteinTargetG: z.number().min(0).max(1000),
-        carbTargetG: z.number().min(0).max(2000),
-        fatTargetG: z.number().min(0).max(1000),
+        dailyCalorieTarget: z.number().positive('Daily calorie target must be greater than zero').max(10000),
+        proteinTargetG: z.number().positive('Protein target must be greater than zero').max(1000),
+        carbTargetG: z.number().positive('Carb target must be greater than zero').max(2000),
+        fatTargetG: z.number().positive('Fat target must be greater than zero').max(1000).optional(),
         weightGoalKg: z.number().min(0).max(500).optional(),
         effectiveFrom: z.string().datetime().optional(), // ISO string; defaults to now
     }),
@@ -35,14 +35,14 @@ export const CreateGoalSchema = z.object({
 const FoodItemSchema = z.object({
     name: z.string().min(1).max(200).trim(),
     quantity: z.object({
-        amount: z.number().min(0),
+        amount: z.number().positive('Quantity must be greater than zero'),
         unit: z.string().min(1).max(50).trim(),
     }),
-    calories: z.number().min(0).max(10000),
+    calories: z.number().positive('Calories must be greater than zero').max(10000),
     macros: z.object({
         proteinG: z.number().min(0).max(1000),
         carbG: z.number().min(0).max(2000),
-        fatG: z.number().min(0).max(1000),
+        fatG: z.number().positive('Fat must be greater than zero').max(1000).optional(),
     }),
     micros: z
         .object({
@@ -68,6 +68,11 @@ const FoodItemSchema = z.object({
         sugar_g: z.number().min(0).optional(),
     })
         .optional(),
+}).superRefine((item, ctx) => {
+    const macroCalories = item.macros.proteinG * 4 + item.macros.carbG * 4 + (item.macros.fatG ?? 0) * 9;
+    if (macroCalories > 0 && Math.abs(item.calories - macroCalories) / macroCalories > 0.3) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['calories'], message: `Calories must be within 30% of the macro total (about ${Math.round(macroCalories)} kcal)` });
+    }
 });
 export const CreateMealSchema = z.object({
     body: z.object({

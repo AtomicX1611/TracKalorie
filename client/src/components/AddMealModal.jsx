@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useForm, useFieldArray, useWatch } from 'react-hook-form'
 import { Plus, Trash2 } from 'lucide-react'
 import { Modal, Button, Input, Select } from './ui'
-import { toDateStr } from '../lib/utils'
+import { apiErrorMessage, toDateStr } from '../lib/utils'
 
 const MICRONUTRIENT_OPTIONS = [
   { key: 'vitaminA_mcg', label: 'Vitamin A', unit: 'mcg' },
@@ -164,7 +164,7 @@ export default function AddMealModal({ open, onClose, onAdd, meal = null, onUpda
           macros: {
             proteinG: Number(item.macros.proteinG),
             carbG: Number(item.macros.carbG),
-            fatG: Number(item.macros.fatG),
+              ...(item.macros.fatG === '' || item.macros.fatG == null ? {} : { fatG: Number(item.macros.fatG) }),
           },
           micros: Object.fromEntries(
             (item.micros ?? [])
@@ -179,7 +179,7 @@ export default function AddMealModal({ open, onClose, onAdd, meal = null, onUpda
       reset()
       onClose()
     } catch (err) {
-      setError(err?.response?.data?.error?.message ?? 'Unable to save this meal. Please try again.')
+      setError(apiErrorMessage(err, 'Unable to save this meal. Please try again.'))
     } finally {
       setSubmitting(false)
     }
@@ -243,7 +243,7 @@ export default function AddMealModal({ open, onClose, onAdd, meal = null, onUpda
                   type="number"
                   min="0"
                   placeholder="350"
-                  {...register(`items.${i}.calories`, { required: 'Required', min: 0 })}
+                  {...register(`items.${i}.calories`, { required: 'Required', min: { value: 1, message: 'Must be greater than zero' } })}
                   error={errors.items?.[i]?.calories?.message}
                 />
               </div>
@@ -254,7 +254,8 @@ export default function AddMealModal({ open, onClose, onAdd, meal = null, onUpda
                   type="number"
                   min="0"
                   placeholder="100"
-                  {...register(`items.${i}.quantity.amount`, { min: 0 })}
+                  {...register(`items.${i}.quantity.amount`, { required: 'Required', min: { value: 0.01, message: 'Must be greater than zero' } })}
+                  error={errors.items?.[i]?.quantity?.amount?.message}
                 />
                 <Select label="Unit" {...register(`items.${i}.quantity.unit`)}>
                   {['g','ml','oz','cup','tbsp','tsp','piece','bar','serving'].map((u) => (
@@ -270,7 +271,8 @@ export default function AddMealModal({ open, onClose, onAdd, meal = null, onUpda
                   min="0"
                   step="0.1"
                   placeholder="25"
-                  {...register(`items.${i}.macros.proteinG`, { min: 0 })}
+                  {...register(`items.${i}.macros.proteinG`, { required: 'Required', min: { value: 0.01, message: 'Must be greater than zero' } })}
+                  error={errors.items?.[i]?.macros?.proteinG?.message}
                 />
                 <Input
                   label="Carbs (g)"
@@ -278,7 +280,8 @@ export default function AddMealModal({ open, onClose, onAdd, meal = null, onUpda
                   min="0"
                   step="0.1"
                   placeholder="40"
-                  {...register(`items.${i}.macros.carbG`, { min: 0 })}
+                  {...register(`items.${i}.macros.carbG`, { required: 'Required', min: { value: 0.01, message: 'Must be greater than zero' } })}
+                  error={errors.items?.[i]?.macros?.carbG?.message}
                 />
                 <Input
                   label="Fat (g)"

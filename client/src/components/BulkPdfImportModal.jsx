@@ -37,7 +37,7 @@ function rowIsComplete(row) {
     row.calories !== null && row.calories !== '' && !isNaN(Number(row.calories)) &&
     row.protein_g !== null && row.protein_g !== '' && !isNaN(Number(row.protein_g)) &&
     row.carbs_g !== null && row.carbs_g !== '' && !isNaN(Number(row.carbs_g)) &&
-    row.fat_g !== null && row.fat_g !== '' && !isNaN(Number(row.fat_g))
+    (row.fat_g === null || row.fat_g === '' || !isNaN(Number(row.fat_g)))
   )
 }
 
@@ -192,7 +192,6 @@ function PreviewRow({ row, index, included, onToggle, onEdit, defaultDate, defau
           {/* Fat */}
           <FieldInput
             label="Fat (g)"
-            required
             value={row.fat_g ?? ''}
             onChange={(v) => onEdit(index, 'fat_g', v === '' ? '' : clamp(parseFloat(v), 0, 1000))}
           />
@@ -341,7 +340,7 @@ function CsvDropzone({ onFile, loading }) {
           Drag & drop or click to browse · CSV only · Max 5 MB
         </p>
         <p className="text-xs text-muted-foreground/60 mt-2">
-          Required columns: Name, Calories, Protein, Carbs, Fat
+          Required columns: Name, Calories, Protein, Carbs · Fat is optional
         </p>
       </div>
 
@@ -453,7 +452,7 @@ export default function BulkPdfImportModal({ open, onClose, onImported }) {
         calories: Number(r.calories),
         protein_g: Number(r.protein_g),
         carbs_g: Number(r.carbs_g),
-        fat_g: Number(r.fat_g),
+        fat_g: r.fat_g === '' || r.fat_g == null ? null : Number(r.fat_g),
         date: r.date || null,
         meal_type: r.meal_type || null,
         quantity_amount: r.quantity_amount != null ? Number(r.quantity_amount) : null,
@@ -548,7 +547,7 @@ export default function BulkPdfImportModal({ open, onClose, onImported }) {
                     ['Calories', '✓ Yes', 'Calories, Energy, Cal, kcal, Cals, Energy (kcal)'],
                     ['Protein (g)', '✓ Yes', 'Protein, Prot, Pro, Protein (g), Pro (g)'],
                     ['Carbs (g)', '✓ Yes', 'Carbohydrates, Carbs, Carb (g), Total Carbs, Net Carbs'],
-                    ['Fat (g)', '✓ Yes', 'Fat, Total Fat, Fat (g), Fats (g), Lipids'],
+                    ['Fat (g)', 'Optional', 'Fat, Total Fat, Fat (g), Fats (g), Lipids'],
                     ['Date', 'Optional', 'Date, Day, Logged On, Log Date, Entry Date'],
                     ['Meal Type', 'Optional', 'Meal, Meal Type, Category, Type, Meal Name'],
                     ['Quantity', 'Optional', 'Serving Size, Amount, Qty, Quantity, Portion'],

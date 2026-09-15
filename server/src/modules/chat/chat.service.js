@@ -116,7 +116,7 @@ async function dispatchTool(toolName, args, userId, timezone) {
           macros: {
             proteinG: item.macros.proteinG,
             carbG: item.macros.carbG,
-            fatG: item.macros.fatG,
+            ...(item.macros.fatG === undefined ? {} : { fatG: item.macros.fatG }),
           },
         })),
         source: 'manual',
@@ -237,7 +237,7 @@ async function dispatchTool(toolName, args, userId, timezone) {
         dailyCalorieTarget: args.dailyCalorieTarget,
         proteinTargetG: args.proteinTargetG,
         carbTargetG: args.carbTargetG,
-        fatTargetG: args.fatTargetG,
+        ...(args.fatTargetG === undefined ? {} : { fatTargetG: args.fatTargetG }),
         weightGoalKg: args.weightGoalKg,
       });
       return {

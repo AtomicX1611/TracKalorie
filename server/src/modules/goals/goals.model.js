@@ -6,7 +6,7 @@ const GoalSchema = new mongoose.Schema(
     dailyCalorieTarget: { type: Number, required: true, min: 0 },
     proteinTargetG:     { type: Number, required: true, min: 0 },
     carbTargetG:        { type: Number, required: true, min: 0 },
-    fatTargetG:         { type: Number, required: true, min: 0 },
+    fatTargetG:         { type: Number, min: 1 },
     weightGoalKg:       { type: Number, min: 0 },
     // Effective-dated: goals are immutable after creation.
     // Always append a new row; never update an existing one.

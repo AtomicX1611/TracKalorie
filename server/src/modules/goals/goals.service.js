@@ -6,7 +6,7 @@ export const goalsService = {
             dailyCalorieTarget: data.dailyCalorieTarget,
             proteinTargetG: data.proteinTargetG,
             carbTargetG: data.carbTargetG,
-            fatTargetG: data.fatTargetG,
+            ...(data.fatTargetG === undefined ? {} : { fatTargetG: data.fatTargetG }),
             weightGoalKg: data.weightGoalKg,
             // Default effectiveFrom to now if not specified
             effectiveFrom: data.effectiveFrom ? new Date(data.effectiveFrom) : new Date(),

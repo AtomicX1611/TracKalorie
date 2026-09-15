@@ -12,8 +12,30 @@ function computeTotals(items) {
         calories: acc.calories + item.calories,
         proteinG: acc.proteinG + item.macros.proteinG,
         carbG: acc.carbG + item.macros.carbG,
-        fatG: acc.fatG + item.macros.fatG,
+        fatG: acc.fatG + (item.macros.fatG ?? 0),
     }), { calories: 0, proteinG: 0, carbG: 0, fatG: 0 });
+}
+
+function validateItems(items) {
+    for (const [index, item] of items.entries()) {
+        const prefix = `Item ${index + 1}`;
+        if (!Number.isFinite(item.calories) || item.calories <= 0) {
+            throw Errors.badRequest(`${prefix}: calories must be greater than zero`);
+        }
+        if (!Number.isFinite(item.quantity?.amount) || item.quantity.amount <= 0) {
+            throw Errors.badRequest(`${prefix}: quantity must be greater than zero`);
+        }
+        const proteinG = item.macros?.proteinG;
+        const carbG = item.macros?.carbG;
+        const fatG = item.macros?.fatG ?? 0;
+        if (!Number.isFinite(proteinG) || proteinG < 0 || !Number.isFinite(carbG) || carbG < 0 || !Number.isFinite(fatG) || fatG < 0) {
+            throw Errors.badRequest(`${prefix}: macro values must be zero or greater`);
+        }
+        const macroCalories = proteinG * 4 + carbG * 4 + fatG * 9;
+        if (macroCalories > 0 && Math.abs(item.calories - macroCalories) / macroCalories > 0.3) {
+            throw Errors.badRequest(`${prefix}: calories must be within 30% of the macro total (about ${Math.round(macroCalories)} kcal)`);
+        }
+    }
 }
 /**
  * Converts a YYYY-MM-DD string to a UTC Date object representing
@@ -42,6 +64,7 @@ export const mealsService = {
      * The AI is a second consumer of this service, not a second implementation.
      */
     async createMeal(userId, data) {
+        validateItems(data.items);
         const totals = computeTotals(data.items);
         const date = parseDateInTimezone(data.date, data.timezone);
         return mealsRepository.create({
@@ -78,6 +101,7 @@ export const mealsService = {
         if (data.date)
             updateData['date'] = parseDateInTimezone(data.date, data.timezone);
         if (data.items) {
+            validateItems(data.items);
             updateData['items'] = data.items;
             updateData['totals'] = computeTotals(data.items);
         }

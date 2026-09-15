@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BarChart3 } from 'lucide-react'
 import { Card, SectionHeader, Select } from '../components/ui'
-import { formatDate, MACRO_COLORS, toDateStr } from '../lib/utils'
+import { apiErrorMessage, formatDate, MACRO_COLORS, toDateStr } from '../lib/utils'
 import { goalsApi, nutritionApi } from '../api'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
@@ -80,13 +80,14 @@ export default function ReportsPage() {
   const [goal, setGoal] = useState({ dailyCalorieTarget: 0, proteinTargetG: 0, carbTargetG: 0, fatTargetG: 0 })
   const [includeMissingDays, setIncludeMissingDays] = useState(true)
   const [reportRange, setReportRange] = useState({ from: '', to: '' })
+  const [reportDays, setReportDays] = useState(7)
   const [error, setError] = useState(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     const today = new Date()
     const fromDate = new Date(today)
-    fromDate.setDate(today.getDate() - 6)
+    fromDate.setDate(today.getDate() - (reportDays - 1))
     const from = toDateStr(fromDate)
     const to = toDateStr(today)
     setReportRange({ from, to })
@@ -103,15 +104,15 @@ export default function ReportsPage() {
       setMacros(macroData ?? [])
       setGoalVsActual(goalData ?? [])
       setMicros(microData ?? [])
-      setGoal(currentGoal ?? { dailyCalorieTarget: 0, proteinTargetG: 0, carbTargetG: 0, fatTargetG: 0 })
+      setGoal(currentGoal ? { ...currentGoal, fatTargetG: currentGoal.fatTargetG ?? 0 } : { dailyCalorieTarget: 0, proteinTargetG: 0, carbTargetG: 0, fatTargetG: 0 })
     }).catch((err) => {
       setWeeklyTrend([])
       setMacros([])
       setGoalVsActual([])
       setMicros([])
-      setError(err?.response?.data?.error?.message ?? 'Unable to load reports.')
+      setError(apiErrorMessage(err, 'Unable to load reports.'))
     })
-  }, [refreshKey])
+  }, [refreshKey, reportDays])
 
   // ── Live sync: re-fetch when the AI chat writes meal or goal data ────────
   useEffect(() => {
@@ -196,11 +197,18 @@ export default function ReportsPage() {
     <div className="p-6 max-w-5xl mx-auto animate-fade-in">
       <SectionHeader
         title="Nutrition Reports"
-        subtitle={reportRange.from ? `7-day window · ${formatDate(reportRange.from)} – ${formatDate(reportRange.to)}` : 'Loading report range…'}
+        subtitle={reportRange.from ? `${reportDays}-day window · ${formatDate(reportRange.from)} – ${formatDate(reportRange.to)}` : 'Loading report range…'}
         action={<BarChart3 className="w-5 h-5 text-accent" />}
       />
 
       {error && <p className="mb-5 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">{error}</p>}
+
+      <div className="flex items-end gap-3 mb-5">
+        <Select label="Report period" value={reportDays} onChange={(e) => setReportDays(Number(e.target.value))} className="w-40">
+          <option value={7}>Last 7 days</option>
+          <option value={30}>Last 30 days</option>
+        </Select>
+      </div>
 
       <label className="flex items-center gap-2 mb-6 text-xs text-muted-foreground cursor-pointer">
         <input type="checkbox" checked={includeMissingDays} onChange={(e) => setIncludeMissingDays(e.target.checked)} />
@@ -228,7 +236,7 @@ export default function ReportsPage() {
       {tab === 'trend' && (
         <div className="flex flex-col gap-5 animate-fade-in">
           <Card className="p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-4">Daily Calorie Intake (7 days)</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-4">Daily Calorie Intake ({reportDays} days)</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={trendData} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
@@ -251,7 +259,7 @@ export default function ReportsPage() {
           {/* Summary stats */}
           <div className="grid grid-cols-3 gap-4">
             {[
-              { label: '7-day Avg', value: trendData.length ? Math.round(trendData.reduce((a, d) => a + d.calories, 0) / trendData.length) : 0, unit: 'kcal/day' },
+              { label: `${reportDays}-day Avg`, value: trendData.length ? Math.round(trendData.reduce((a, d) => a + d.calories, 0) / trendData.length) : 0, unit: 'kcal/day' },
               { label: 'Peak Day', value: trendData.length ? Math.max(...trendData.map((d) => d.calories)) : 0, unit: 'kcal' },
               { label: 'Days On Track', value: gvaData.filter((d) => Math.abs(d.actual - d.goal) < 200).length, unit: `/ ${gvaData.length}` },
             ].map(({ label, value, unit }) => (
@@ -355,7 +363,7 @@ export default function ReportsPage() {
         <Card className="p-5 animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
             <div>
-              <h3 className="text-sm font-semibold text-foreground">7-Day Micronutrient Trend</h3>
+                <h3 className="text-sm font-semibold text-foreground">{reportDays}-Day Micronutrient Trend</h3>
               <p className="text-xs text-muted-foreground mt-1">
                 Select one nutrient to inspect daily consumption without a long list.
               </p>
@@ -410,7 +418,7 @@ export default function ReportsPage() {
           <div className="grid grid-cols-2 gap-4 mt-5">
             <div className="border border-border rounded-lg p-4 text-center">
               <p className="mono text-2xl font-bold text-accent">{microAverage.toFixed(1)} {selectedMicroUnit}</p>
-              <p className="text-xs text-muted-foreground">7-day daily average</p>
+              <p className="text-xs text-muted-foreground">{reportDays}-day daily average</p>
             </div>
             <div className="border border-border rounded-lg p-4 text-center">
               <p className="mono text-2xl font-bold text-accent">{microAveragePct}%</p>

@@ -107,10 +107,10 @@ const HEADER_ALIASES = {
 // ── Zod: validate a single parsed row ─────────────────────────────────────────
 const ParsedRowSchema = z.object({
   name: z.string().min(1).max(200).trim(),
-  calories: z.number().min(0).max(10000),
+  calories: z.number().positive('Calories must be greater than zero').max(10000),
   protein_g: z.number().min(0).max(1000),
   carbs_g: z.number().min(0).max(2000),
-  fat_g: z.number().min(0).max(1000),
+  fat_g: z.number().min(0).max(1000).nullable().optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   meal_type: z.enum(['breakfast', 'lunch', 'dinner', 'snack']).nullable().optional(),
   quantity_amount: z.number().min(0).nullable().optional(),
@@ -140,10 +140,10 @@ const ParsedRowSchema = z.object({
 // ── Zod: validate a confirmed row (after user review) ─────────────────────────
 const ConfirmedRowSchema = z.object({
   name: z.string().min(1).max(200).trim(),
-  calories: z.number().min(0).max(10000),
+  calories: z.number().positive('Calories must be greater than zero').max(10000),
   protein_g: z.number().min(0).max(1000),
   carbs_g: z.number().min(0).max(2000),
-  fat_g: z.number().min(0).max(1000),
+  fat_g: z.number().min(0).max(1000).nullable().optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   meal_type: z.enum(['breakfast', 'lunch', 'dinner', 'snack']).nullable().optional(),
   quantity_amount: z.number().min(0).nullable().optional(),
@@ -366,7 +366,7 @@ export const importsService = {
 
     // Verify at least the 5 required columns are present
     const presentFields = new Set(colMap.filter(Boolean));
-    const required = ['name', 'calories', 'protein_g', 'carbs_g', 'fat_g'];
+    const required = ['name', 'calories', 'protein_g', 'carbs_g'];
     const missingRequired = required.filter((f) => !presentFields.has(f));
 
     if (missingRequired.length > 0) {
@@ -552,7 +552,7 @@ export const importsService = {
               macros: {
                 proteinG: r.protein_g,
                 carbG: r.carbs_g,
-                fatG: r.fat_g,
+                ...(r.fat_g == null ? {} : { fatG: r.fat_g }),
               },
               micros: buildMicros(r),
             },

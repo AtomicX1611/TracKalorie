@@ -55,9 +55,9 @@ export const CHAT_TOOLS = [
                   properties: {
                     proteinG: { type: 'number' },
                     carbG:    { type: 'number' },
-                    fatG:     { type: 'number' },
+                    fatG:     { type: 'number', description: 'Optional fat estimate in grams.' },
                   },
-                  required: ['proteinG', 'carbG', 'fatG'],
+                  required: ['proteinG', 'carbG'],
                 },
               },
               required: ['name', 'quantity', 'calories', 'macros'],
@@ -190,14 +190,14 @@ export const CHAT_TOOLS = [
           },
           fatTargetG: {
             type: 'number',
-            description: 'Daily fat goal in grams.',
+            description: 'Optional daily fat goal in grams.',
           },
           weightGoalKg: {
             type: 'number',
             description: 'Optional target body weight in kilograms.',
           },
         },
-        required: ['dailyCalorieTarget', 'proteinTargetG', 'carbTargetG', 'fatTargetG'],
+        required: ['dailyCalorieTarget', 'proteinTargetG', 'carbTargetG'],
       },
     },
   },
