@@ -1,6 +1,6 @@
 # TracKalorie
 
-[TThis is the application video demonstration](https://drive.google.com/file/d/14LuD8GjzRlav_xpwzvqRP6-R7mf8yGcE/view?usp=sharing)
+[This is the application video demonstration](https://drive.google.com/file/d/14LuD8GjzRlav_xpwzvqRP6-R7mf8yGcE/view?usp=sharing)
 
 TracKalorie is a personal nutrition tracker built for a three-day engineering assignment. It provides authenticated meal and goal tracking, nutrition reports, image-based food extraction, and a conversational nutrition assistant.
 
