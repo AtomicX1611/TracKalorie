@@ -1,7 +1,6 @@
 import axios from 'axios'
 import { getBrowserTimezone } from '../lib/utils'
 
-// ── Axios instance ────────────────────────────────────────────────────────────
 const apiBaseUrl = import.meta.env.VITE_API_URL
 
 if (!apiBaseUrl) {
@@ -16,7 +15,6 @@ const api = axios.create({
   baseURL: normalizedApiBaseUrl,
   headers: { 'Content-Type': 'application/json' },
 })
-
 // ── Request interceptor — attach JWT + timezone header ────────────────────────
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken')
