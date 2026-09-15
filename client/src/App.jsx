@@ -36,6 +36,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           {/* Public */}
+          <Route path="/" element={<PublicOnly><RegisterPage /></PublicOnly>} />
           <Route path="/login"    element={<PublicOnly><LoginPage /></PublicOnly>} />
           <Route path="/register" element={<PublicOnly><RegisterPage /></PublicOnly>} />
 

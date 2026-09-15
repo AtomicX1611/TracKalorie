@@ -6,8 +6,8 @@ import { Zap, Eye, EyeOff } from 'lucide-react'
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const [email, setEmail] = useState('demo@trackalorie.app')
-  const [password, setPassword] = useState('password123')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -60,7 +60,6 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg text-sm bg-surface border border-border focus:border-accent focus:ring-2 focus:ring-accent/10 outline-none transition-all"
-                placeholder="you@example.com"
                 required
               />
             </div>
@@ -73,7 +72,6 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-3 py-2 pr-10 rounded-lg text-sm bg-surface border border-border focus:border-accent focus:ring-2 focus:ring-accent/10 outline-none transition-all"
-                  placeholder="••••••••"
                   required
                 />
                 <button
@@ -105,10 +103,6 @@ export default function LoginPage() {
             <Link to="/register" className="text-accent hover:underline">Create one</Link>
           </p>
         </div>
-
-        <p className="text-center text-xs text-muted-foreground/50 mt-6">
-          Demo: use any email + password
-        </p>
       </div>
     </div>
   )
