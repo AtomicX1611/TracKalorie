@@ -41,7 +41,7 @@ Goal input bounds are enforced by Zod and Mongoose.
 | PATCH | `/meals/:id` | Updates meal type, date, and/or items; recalculates totals when items change. |
 | DELETE | `/meals/:id` | Deletes an owner meal and returns `204`. |
 
-Meal items contain `name`, `quantity`, `calories`, `macros`, and optional fixed micronutrient fields. `source` supports `manual`, `ai_label`, `ai_plate`, and `import`; the current UI uses manual or confirmed AI values.
+Meal items contain `name`, `quantity`, `calories`, `macros`, and optional fixed micronutrient fields. Calories and quantity are required and positive; fat is optional. Shared meal-service validation checks macro ranges and calorie-to-macro consistency for manual, AI, chat, and import writes. `source` supports `manual`, `ai_label`, `ai_plate`, and `import`.
 
 List responses contain `data` as the meal array and a pagination object. The cursor encodes the last meal's date and MongoDB id; clients should treat it as opaque.
 
@@ -53,6 +53,17 @@ All require `from` and `to` query dates and return an aggregation array in `data
 - `GET /nutrition/macros?granularity=day|week`: grouped calories and macros.
 - `GET /nutrition/micros/summary`: daily sums for the fixed micronutrient fields.
 - `GET /nutrition/goal-vs-actual`: daily actual totals with the goal active for that date, when one exists.
+
+The client currently uses these report endpoints for selectable last-7-day and last-30-day views; the API itself accepts the requested `from` and `to` dates.
+
+## CSV Imports
+
+| Method | Path | Behavior |
+|---|---|---|
+| POST | `/imports/csv/parse` | Accepts a CSV upload, maps common headers, validates rows, and returns a preview without writing meals. |
+| POST | `/imports/csv/confirm` | Validates confirmed rows and saves valid rows through the shared meal service, returning imported and failed row details. |
+
+CSV uploads are limited to 5 MB and require food name, calories, protein, and carbohydrates. Fat, date, meal type, quantity, and micronutrients are optional. When a CSV contains separate food and meal columns, values such as `Lunch` are normalized to the meal-type field; rows without a meal type use the user-selected default.
 
 ## AI and Chat
 
@@ -74,4 +85,4 @@ The server validates non-empty `user`/`assistant` messages, trims the model thre
 
 Zod failures return `400 VALIDATION_ERROR`; auth failures return `401`; unknown resources return `404`; provider failures return `502 AI_PROVIDER_UNAVAILABLE`; missing AI configuration returns `503 AI_NOT_CONFIGURED`; unexpected failures return `500 INTERNAL_SERVER_ERROR`. Auth is limited to 20 requests per 15 minutes per IP and chat to 30 requests per minute per IP. Multer and controller checks reject oversized or disallowed images.
 
-There is no committed OpenAPI document or generated client. The route files and request schemas are currently the contract.
+There is no committed OpenAPI document or generated client. The route files, request schemas, and shared service validation are currently the contract.

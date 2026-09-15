@@ -34,14 +34,19 @@ React page/component
 - `nutrition`: MongoDB aggregation reports over meals and goals.
 - `ai`: image upload validation, GPT-4o vision extraction, Zod response validation, confidence and warning calculation.
 - `chat`: stateless GPT-4o tool-calling orchestration over existing meal, goal, and nutrition services.
+- `imports`: CSV upload, parsing, preview validation, confirmed-row import, and row-level failure reporting.
 
-This is a modular monolith, not a collection of deployable services. The module boundaries make ownership and testing clearer while keeping one deployment, one database connection, and no inter-service infrastructure.
+This is a modular monolith, not a collection of deployable services. The module boundaries make ownership and testing clearer while keeping one deployment, one database connection, and no queue or distributed cache in the current implementation.
 
 ## Why This Fits Three Days
 
 A flat CRUD server would be faster initially but would duplicate rules when manual forms, AI confirmation, and chat all write meals. Microservices would add deployment, network, service-authentication, retries, and observability work without a demonstrated scale need. The modular monolith gives separation at the code boundary while preserving assignment-sized delivery speed.
 
-The trade-off is that modules share one process and database. A defect or resource problem in the process can affect multiple domains. The first justified extraction would be asynchronous AI processing if request latency, provider quotas, or volume become material; it is not needed for the current assignment.
+The trade-off is that modules share one process and database. A defect or resource problem in the process can affect multiple domains. The first justified extraction would be asynchronous AI processing or large-file imports if request latency, provider quotas, or volume become material; it is not needed for the current assignment.
+
+## Scale-out Direction
+
+The documented scalable proposal adds a CDN/WAF, load balancer, multiple stateless API instances, a distributed cache, object storage, a queue with background workers, database indexes/read replicas, autoscaling, and monitoring. These components improve latency, throughput, and isolation without changing the domain services. Synchronous login, meal writes, goals, and small reports remain on the request path; large imports and expensive AI work are candidates for asynchronous processing.
 
 ## Data Isolation and Time
 
@@ -52,7 +57,7 @@ Protected routes receive the user identity from the verified JWT. Meal, goal, an
 - Startup validates production configuration and fails fast if required MongoDB, OpenAI, JWT, or CORS settings are unsafe.
 - MongoDB connection selection times out after five seconds and process shutdown closes the HTTP server and database connection.
 - OpenAI failures, malformed JSON, and schema-invalid model responses become `502 AI_PROVIDER_UNAVAILABLE`; missing configuration becomes `503 AI_NOT_CONFIGURED`.
-- Invalid requests use Zod or explicit controller validation and return structured `400` errors.
+- Invalid requests use Zod, service-level business validation, or explicit controller validation and return structured `400` errors.
 - Unknown routes return a structured `404`; unexpected errors are logged server-side and returned as a generic `500`.
 - The client retries a protected request once after refresh-token rotation and queues concurrent requests during that refresh.
 

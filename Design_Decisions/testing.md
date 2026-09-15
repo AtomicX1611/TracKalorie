@@ -32,6 +32,7 @@ The existing module boundaries make focused tests straightforward without changi
 - Repository/integration-test user scoping, effective-dated goals, meal CRUD, cursor pagination, and nutrition aggregation against a disposable MongoDB database.
 - API-test public/protected route behavior, Zod failures, refresh rotation, rate-limit responses, upload validation, and consistent error envelopes.
 - Client-test auth guards, token refresh queue behavior, meal forms, scanner confirmation, and chat action refresh events.
+- Test CSV header mapping, preview validation, meal-type normalization, optional fat values, partial import failures, and confirmed rows passing through shared meal validation.
 - Use mocked OpenAI responses for deterministic label and plate validation; do not spend provider calls in ordinary CI.
 
 ## Highest-Value Cases
@@ -44,6 +45,8 @@ The existing module boundaries make focused tests straightforward without changi
 6. Cursor pagination returns stable pages and `hasMore` correctly.
 7. Reports use only the authenticated user's meals and apply the selected date range.
 8. Provider, database, validation, and unexpected errors retain the documented status/code shape.
+9. A meal with invalid calorie-to-macro consistency is rejected consistently through manual, AI, chat, and CSV write paths.
+10. Selecting 7 days and 30 days requests the matching date range and renders the matching report labels and missing-day behavior.
 
 ## Quality Gaps and Next Step
 

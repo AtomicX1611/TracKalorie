@@ -359,8 +359,15 @@ export const importsService = {
     const tableHeaders = rawHeaders.map((h) => h.trim());
 
     // Map each column index → internal field key (or null if unrecognized)
-    const colMap = rawHeaders.map((h) => {
-      const normalized = normalizeHeader(h);
+    const normalizedHeaders = rawHeaders.map((h) => normalizeHeader(h));
+    const hasExplicitNameColumn = normalizedHeaders.some((header) =>
+      ['food', 'item', 'food item', 'description', 'name', 'food name', 'dish'].includes(header)
+    );
+    const colMap = normalizedHeaders.map((normalized) => {
+      // "Meal" is commonly used for either the food name or the meal type.
+      // Prefer meal type when a separate food-name column is present; otherwise
+      // keep it as the food-name column for compatibility with simple diaries.
+      if (normalized === 'meal' && hasExplicitNameColumn) return 'meal_type';
       return HEADER_ALIASES[normalized] ?? null;
     });
 

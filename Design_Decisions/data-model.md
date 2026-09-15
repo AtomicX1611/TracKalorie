@@ -31,7 +31,7 @@ A TTL index deletes the document at `expiresAt`; an index also supports token an
 Defined in `server/src/modules/goals/goals.schema.js`.
 
 - `userId` reference.
-- `dailyCalorieTarget`, `proteinTargetG`, `carbTargetG`, `fatTargetG`.
+- `dailyCalorieTarget`, `proteinTargetG`, `carbTargetG`, and optional `fatTargetG`.
 - optional `weightGoalKg`.
 - `effectiveFrom`.
 - `createdAt`.
@@ -54,18 +54,18 @@ Defined in `server/src/modules/meals/meals.schema.js`.
 
 Food items are embedded because they are consumed as part of one meal and are not independently owned resources. The indexes `{ userId: 1, date: -1 }` and `{ userId: 1, date: -1, mealType: 1 }` match list and filter queries.
 
-The `import` source value exists in the schema/request contract, but there is no imports route or import workflow in this repository.
+CSV import rows use the `import` source and pass through the same meal service as manual and AI-confirmed writes.
 
 ## Write Invariants
 
-`server/src/modules/meals/meals.service.js` recalculates `totals` from `items` on create and when items are updated; client totals are not trusted. Goal updates create new documents rather than mutating historical goals. Meal and goal repositories scope every operation with `userId`.
+`server/src/modules/meals/meals.service.js` validates item calories, quantities, and macro values, checks calorie-to-macro consistency, and recalculates `totals` from `items` on create and when items are updated; client totals are not trusted. Goal updates create new documents rather than mutating historical goals. Meal and goal repositories scope every operation with `userId`.
 
 ## Reports
 
-`server/src/modules/nutrition/nutrition.repository.js` aggregates meal totals by date or week and unwinds `items` for micronutrients. Goal-versus-actual reads goals effective before the range end, then selects the applicable goal in application code for each actual day. Reports are bounded by required `from` and `to` dates and are not paginated.
+`server/src/modules/nutrition/nutrition.repository.js` aggregates meal totals by date or week and unwinds `items` for micronutrients. Goal-versus-actual reads goals effective before the range end, then selects the applicable goal in application code for each actual day. Reports are bounded by required `from` and `to` dates and are not paginated. The client currently offers last-7-day and last-30-day selections.
 
 The current pipeline groups the stored `date` field with UTC. The request timezone is passed through the service/repository interface, but the aggregation expressions currently use `UTC`; this is an implementation detail to revisit if dynamic timezone bucketing becomes a requirement.
 
 ## Deliberate Omissions
 
-There is no shared food catalog, weight-log collection, chat-session collection, import-job collection, or precomputed daily rollup. These appeared in earlier planning material but are not implemented. A catalog or rollup should be added only when search, cross-meal reuse, or report scale justifies the additional model and migration work.
+There is no shared food catalog, weight-log collection, chat-session collection, import-job collection, or precomputed daily rollup. Import processing is currently synchronous and does not create durable import-job records. A catalog, job collection, or rollup should be added only when search, cross-meal reuse, background processing, or report scale justifies the additional model and migration work.

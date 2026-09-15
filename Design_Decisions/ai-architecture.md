@@ -1,6 +1,6 @@
 # AI Architecture
 
-TracKalorie has two GPT-4o integrations, both behind the Express API and both isolated in `server/src/modules/ai/` or `server/src/modules/chat/`.
+TracKalorie has two GPT-4o integrations, both behind the Express API and isolated in `server/src/modules/ai/` or `server/src/modules/chat/`. Neither integration is called directly by the browser.
 
 ## Image Extraction
 
@@ -39,4 +39,4 @@ The API applies a 30-request/minute per-IP chat limiter. Image uploads are type-
 
 ## Trade-offs and Evolution
 
-Synchronous calls keep the three-day implementation understandable and avoid Redis or a worker that would be idle at assignment scale. The trade-off is user-visible latency and no durable retry or job status. At higher usage, extract and import-like work should move behind a queue with retries, provider backoff, cost quotas, and idempotency. Persistent conversation storage, moderation, prompt/version tracking, and evaluation fixtures would also be appropriate product evolution, but none is implemented today.
+Synchronous calls keep the three-day implementation understandable and avoid Redis or a worker that would be idle at assignment scale. The trade-off is user-visible latency and no durable retry or job status. At higher usage, extraction and large-import work should move behind a queue with retries, provider backoff, cost quotas, progress tracking, and idempotency. Persistent conversation storage, moderation, prompt/version tracking, and evaluation fixtures would also be appropriate product evolution, but none is implemented today.

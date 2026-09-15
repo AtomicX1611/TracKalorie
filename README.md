@@ -1,5 +1,7 @@
 # TracKalorie
 
+[TThis is the application video demonstration](https://drive.google.com/file/d/14LuD8GjzRlav_xpwzvqRP6-R7mf8yGcE/view?usp=sharing)
+
 TracKalorie is a personal nutrition tracker built for a three-day engineering assignment. It provides authenticated meal and goal tracking, nutrition reports, image-based food extraction, and a conversational nutrition assistant.
 
 The implementation is deliberately a small **MERN modular monolith**: React and Vite in `client/`, an Express/Mongoose API in `server/`, and MongoDB for persistence. The client and server communicate only through the versioned REST API.
@@ -9,12 +11,13 @@ The implementation is deliberately a small **MERN modular monolith**: React and 
 - JWT registration, login, refresh-token rotation, logout, and protected routes.
 - Meal CRUD with embedded food items, server-computed totals, filtering, date ranges, and cursor pagination.
 - Effective-dated calorie, macro, and weight goals.
-- Weekly trends, macro breakdowns, micronutrient summaries, and goal-versus-actual reports.
+- Date-range nutrition reports with selectable 7-day and 30-day views, macro breakdowns, micronutrient summaries, and goal-versus-actual comparisons.
 - GPT-4o image extraction for nutrition labels and plate photos. Results are validated and require user confirmation before a meal is saved.
 - GPT-4o chat with tool calls for meal logging, meal lookup, summaries, goal management, nutrition questions, and explicit meal deletion.
+- CSV food-diary import with preview, row validation, optional meal dates/types, partial-failure reporting, and shared meal-service validation.
 - Helmet, restricted CORS, auth rate limiting, chat rate limiting, Zod request validation, file type/size checks, and centralized error responses.
 
-Features described in the older planning files but not implemented include PDF import, background queues, persistent chat collections, external food databases, and automated tests.
+Proposed scale-out components such as CDN/WAF, load balancing, background queues, object storage, distributed caching, read replicas, autoscaling, and tracing are documented as future architecture options; they are not part of the current deployment.
 
 ## Repository Layout
 
@@ -22,8 +25,9 @@ Features described in the older planning files but not implemented include PDF i
 client/                 React/Vite frontend
 server/src/             Express API
 server/src/common/      config and shared middleware
-server/src/modules/     auth, users, goals, meals, nutrition, ai, chat
-docs/                   engineering documentation
+server/src/modules/     auth, users, goals, meals, nutrition, ai, chat, imports
+Design_Decisions/       engineering documentation
+workflow/               request-flow diagrams and scalable architecture proposal
 ```
 
 ## Local Setup
@@ -71,15 +75,17 @@ All API routes are under `/api/v1`. Auth routes are public; all other module rou
 | Nutrition | `/nutrition/trend/weekly`, `/nutrition/macros`, `/nutrition/micros/summary`, `/nutrition/goal-vs-actual` |
 | AI | `POST /ai/extract?type=label\|plate` with an image multipart field |
 | Chat | `POST /chat` |
+| Imports | `POST /imports/csv/parse`, `POST /imports/csv/confirm` |
 
-See [docs/api-design.md](docs/api-design.md) for request and response details.
+See [Design_Decisions/api-design.md](Design_Decisions/api-design.md) for request and response details.
 
 ## Engineering Documentation
 
-- [Architecture](docs/architecture.md)
-- [Architecture decisions](docs/architecture-decisions.md)
-- [Data model](docs/data-model.md)
-- [API design](docs/api-design.md)
-- [AI architecture](docs/ai-architecture.md)
-- [Testing](docs/testing.md)
+- [Architecture](Design_Decisions/architecture.md)
+- [Architecture decisions](Design_Decisions/architecture-decisions.md)
+- [Data model](Design_Decisions/data-model.md)
+- [API design](Design_Decisions/api-design.md)
+- [AI architecture](Design_Decisions/ai-architecture.md)
+- [Testing](Design_Decisions/testing.md)
+- [Demo recording script](demo-recording-script.md)
 

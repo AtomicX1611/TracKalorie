@@ -16,7 +16,7 @@ These decisions describe the implemented system and the scope judgment behind it
 
 ## Modular Monolith
 
-**Choice:** One Express deployment with `auth`, `users`, `goals`, `meals`, `nutrition`, `ai`, and `chat` modules, each generally split into routes, controllers, services, and repositories.
+**Choice:** One Express deployment with `auth`, `users`, `goals`, `meals`, `nutrition`, `ai`, `chat`, and `imports` modules, each generally split into routes, controllers, services, and repositories where appropriate.
 
 **Alternatives:** A flat monolith or microservices/event-driven infrastructure.
 
@@ -24,11 +24,11 @@ These decisions describe the implemented system and the scope judgment behind it
 
 **Trade-offs:** Modules share CPU, memory, release cadence, and the MongoDB deployment. Failure isolation is weaker than separate services.
 
-**Change when:** Move AI extraction or imports to a worker/queue when latency, provider quotas, or volume justify retries and independent scaling. Keep CRUD together until that pressure is real.
+**Change when:** Move AI extraction or large imports to a worker/queue when latency, provider quotas, or volume justify retries and independent scaling. Keep CRUD together until that pressure is real.
 
 ## MongoDB Document Model
 
-**Choice:** Store each meal as one document with embedded food items and server-computed totals. Keep goals, users, and refresh tokens in separate collections.
+**Choice:** Store each meal as one document with embedded food items and server-computed totals. Keep goals, users, and refresh tokens in separate collections; process CSV imports through the meal aggregate rather than introducing an import-job collection.
 
 **Alternatives:** A normalized SQL schema or separate food-item documents.
 
@@ -88,7 +88,7 @@ These decisions describe the implemented system and the scope judgment behind it
 
 ## No Unneeded Infrastructure
 
-**Choice:** No Redis, Kafka, Kubernetes, background worker, or separate AI service is implemented.
+**Choice:** No Redis, Kafka, Kubernetes, background worker, or separate AI service is implemented. CSV parsing and confirmed-row imports are currently synchronous.
 
 **Why:** The repository targets assignment-scale traffic, and none of those systems is required for the implemented workflows. Adding them in three days would increase operational failure modes and reduce time for validation and user-facing behavior.
 
