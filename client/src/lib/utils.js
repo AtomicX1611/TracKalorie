@@ -3,7 +3,12 @@ import { twMerge } from 'tailwind-merge'
 
 export const cn = (...inputs) => twMerge(clsx(inputs))
 
-export const toDateStr = (d = new Date()) => d.toISOString().split('T')[0]
+export const toDateStr = (d = new Date()) => {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 export const mealDateKey = (date) =>
   typeof date === 'string' ? date.split('T')[0] : toDateStr(date)

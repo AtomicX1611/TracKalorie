@@ -64,7 +64,7 @@ CSV import rows use the `import` source and pass through the same meal service a
 
 `server/src/modules/nutrition/nutrition.repository.js` aggregates meal totals by date or week and unwinds `items` for micronutrients. Goal-versus-actual reads goals effective before the range end, then selects the applicable goal in application code for each actual day. Reports are bounded by required `from` and `to` dates and are not paginated. The client currently offers last-7-day and last-30-day selections.
 
-The current pipeline groups the stored `date` field with UTC. The request timezone is passed through the service/repository interface, but the aggregation expressions currently use `UTC`; this is an implementation detail to revisit if dynamic timezone bucketing becomes a requirement.
+The current pipeline groups the stored date-only `date` field with UTC. This is intentional: the selected user calendar date is stored as UTC midnight, so applying a second timezone conversion during aggregation would shift the meal into the wrong day. The client uses the browser's IANA timezone to generate local calendar dates, and the backend validates that timezone for request context. `loggedAt` remains the actual timestamp if future event-time reporting is required.
 
 ## Deliberate Omissions
 

@@ -50,7 +50,7 @@ The documented scalable proposal adds a CDN/WAF, load balancer, multiple statele
 
 ## Data Isolation and Time
 
-Protected routes receive the user identity from the verified JWT. Meal, goal, and report queries scope by that identity; a missing meal is returned as `404` rather than revealing whether another user's identifier exists. The client sends an IANA timezone in `X-Timezone`; the middleware validates its shape with `Intl.DateTimeFormat` and falls back to `UTC`. Meal calendar dates are stored as UTC dates representing the selected `YYYY-MM-DD`, while `loggedAt` records the actual timestamp.
+Protected routes receive the user identity from the verified JWT. Meal, goal, and report queries scope by that identity; a missing meal is returned as `404` rather than revealing whether another user's identifier exists. The client sends an IANA timezone in `X-Timezone`; the middleware validates it with `Intl.DateTimeFormat` and falls back to `UTC`. The client generates `YYYY-MM-DD` values from local calendar components, while meal calendar dates are stored as UTC midnight representations of that selected date. Reports group this date-only field in UTC, while `loggedAt` records the actual timestamp for future event-time reporting.
 
 ## Failure Handling
 
